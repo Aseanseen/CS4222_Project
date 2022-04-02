@@ -6,7 +6,7 @@
 /*---------------------------------------------------------------------------*/
 typedef struct {
   unsigned long src_id;
-  unsigned long timestamp;
-  unsigned long seq;
+//  unsigned long timestamp;
+//  unsigned long seq;
 } data_packet_struct;
 /*---------------------------------------------------------------------------*/
