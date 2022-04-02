@@ -37,6 +37,7 @@ static int rssi_count;
 static int consec = 0;
 static int detect_timestamp_s;
 static int absent_timestamp_s;
+unsigned long prev_timestamp_s;
 /*---------------------------------------------------------------------------*/
 static void count_consec(int, int);
 /*---------------------------------------------------------------------------*/
@@ -206,14 +207,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
 {
     static uint16_t i = 0;
     static int NumSleep = 0;
-    int prev_timestamp_s = 0;
 
     linkaddr_t addr;
     PT_BEGIN(&pt);
-
-    curr_timestamp = clock_time();
-    // int curr_timestamp_s = curr_timestamp / CLOCK_SECOND;
-    prev_timestamp_s = curr_timestamp / CLOCK_SECOND - LATENCY_BOUND_S;
 
     // printf("Start clock %lu ticks, timestamp %3lu.%03lu\n", curr_timestamp, curr_timestamp / CLOCK_SECOND, ((curr_timestamp % CLOCK_SECOND) * 1000) / CLOCK_SECOND);
 
@@ -258,6 +254,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             	count_consec(is_detect_cycle(), prev_timestamp_s);
         		rssi_sum = 0;
 				rssi_count = 0;
+                prev_timestamp_s = clock_time() / CLOCK_SECOND - LATENCY_BOUND_S;
             }
         }
         /* Sleep mode */
@@ -292,6 +289,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
 	            	count_consec(is_detect_cycle(), prev_timestamp_s);
 	            	rssi_sum = 0;
 	            	rssi_count = 0;
+                    prev_timestamp_s = clock_time() / CLOCK_SECOND - LATENCY_BOUND_S;
 	            }
             }
         }
