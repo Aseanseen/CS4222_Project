@@ -37,16 +37,16 @@ static int rssi_count;
 static int consec = 0;
 static int detect_timestamp_s;
 static int absent_timestamp_s;
-unsigned long prev_timestamp_s;
+unsigned long cycle_start_timestamp_s;
 /*---------------------------------------------------------------------------*/
-static void count_consec(int, int);
+static void count_consec(int, int, int);
 /*---------------------------------------------------------------------------*/
 PROCESS(cc2650_nbr_discovery_process, "cc2650 neighbour discovery process");
 AUTOSTART_PROCESSES(&cc2650_nbr_discovery_process);
 /*---------------------------------------------------------------------------*/
-static void count_consec(int is_detect_cycle, int timestamp_s)
+static void count_consec(int is_detect_cycle, int curr_timestamp_s, int timestamp_s)
 {
-    printf("COUNTING %i STATE %i DETECT %i\n", consec, state_flag, is_detect_cycle);
+    printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, timestamp_s, consec, state_flag, is_detect_cycle);
 	/* Detect mode */
 	if(state_flag)
 	{
@@ -103,15 +103,6 @@ static void count_consec(int is_detect_cycle, int timestamp_s)
 
 static void recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 {
-	/* Choice of message or data packet*/
-	// Message
-	// char message[50];
-	// strcpy(message,(char *)packetbuf_dataptr());
-	// message[packetbuf_datalen()]='\0';
-	// curr_timestamp = clock_time(); 
-	// printf("Timestamp: %3lu.%03lu Received packet from node %lu\n", curr_timestamp / CLOCK_SECOND, ((curr_timestamp % CLOCK_SECOND)*1000) / CLOCK_SECOND, ); // Need to add in some id
-	// printf("RSSI: %d\n", (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI));
-
 	// Data packet struct
 	printf("RECEIVING\n");
 	memcpy(&received_packet, packetbuf_dataptr(), sizeof(data_packet_struct));
@@ -133,29 +124,30 @@ static void recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 static const struct unicast_callbacks unicast_callbacks = {recv_uc};
 static struct unicast_conn uc;
 /*---------------------------------------------------------------------------*/
+
+/*
+Populates an array with time slots to remain active for.
+Suppose an example array of n = 3:
+
+0 1 2
+3 4 5
+6 7 8
+
+And row number, r is 1 and col number, c is 1
+
+Then, rotation number is the number which the row and col intersects.
+It is determined by formula n * r + c = 3 * 1 + 1 = 4.
+
+We first find all col-wise numbers excluding rot number 4, and populate the arr as such:
+[1, x, x, x, 7].
+
+We reserve 3 slots between the col num before and after rot num for the row-wise numbers 3, 4, 5.
+
+The final array is [1, 3, 4, 5, 7]. It is always sorted and is helpful in the 
+revised send scheduler algorithm to determine when to turn on and off the radio.
+*/
 void set_active_slots(int *buf, int row_num, int col_num)
 {
-    /*
-        Populates an array with time slots to remain active for.
-        Suppose an example array of n = 3:
-
-        0 1 2
-        3 4 5
-        6 7 8
-
-        And row number, r is 1 and col number, c is 1
-
-        Then, rotation number is the number which the row and col intersects.
-        It is determined by formula n * r + c = 3 * 1 + 1 = 4.
-
-        We first find all col-wise numbers excluding rot number 4, and populate the arr as such:
-        [1, x, x, x, 7].
-
-        We reserve 3 slots between the col num before and after rot num for the row-wise numbers 3, 4, 5.
-
-        The final array is [1, 3, 4, 5, 7]. It is always sorted and is helpful in the 
-        revised send scheduler algorithm to determine when to turn on and off the radio.
-    */
     int temp = 0, insert_index = 0;
     int j;
 
@@ -207,6 +199,8 @@ char sender_scheduler(struct rtimer *t, void *ptr)
 {
     static uint16_t i = 0;
     static int NumSleep = 0;
+    int cycle_prev_duration_s;
+    int curr_timestamp_s;
 
     linkaddr_t addr;
     PT_BEGIN(&pt);
@@ -227,6 +221,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
         if (send_arr[send_index] == curr_pos)
         {
             printf("SENDING\n");
+
+            // radio on
+            NETSTACK_RADIO.on();
 
             for (i = 0; i < NUM_SEND; i++)
             { // #define NUM_SEND 2 (in defs_and_types.h)
@@ -251,16 +248,22 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             send_index = (send_index == SEND_ARR_LEN - 1) ? 0 : send_index + 1;
             if (curr_pos == 0)
             {
-            	count_consec(is_detect_cycle(), prev_timestamp_s);
+                curr_timestamp_s = clock_time()/CLOCK_SECOND;
+                cycle_prev_duration_s = curr_timestamp_s - cycle_start_timestamp_s;
+                printf("New cycle begins. Previous cycle lasted for: %i\n", cycle_prev_duration_s);
+            	count_consec(is_detect_cycle(), curr_timestamp_s, cycle_start_timestamp_s);
         		rssi_sum = 0;
 				rssi_count = 0;
-                prev_timestamp_s = clock_time() / CLOCK_SECOND - LATENCY_BOUND_S;
+                cycle_start_timestamp_s = curr_timestamp_s;
             }
         }
         /* Sleep mode */
         else
         {
             printf("SLEEPING\n");
+
+            // radio off
+            NETSTACK_RADIO.off();
 
             // SLEEP_SLOT cannot be too large as value will overflow,
             // to have a large sleep interval, sleep many times instead
@@ -286,10 +289,13 @@ char sender_scheduler(struct rtimer *t, void *ptr)
                 curr_pos = (curr_pos == TOTAL_SLOTS_LEN - 1) ? 0 : curr_pos + 1;
                 if (curr_pos == 0)
 	            {
-	            	count_consec(is_detect_cycle(), prev_timestamp_s);
-	            	rssi_sum = 0;
-	            	rssi_count = 0;
-                    prev_timestamp_s = clock_time() / CLOCK_SECOND - LATENCY_BOUND_S;
+                    curr_timestamp_s = clock_time()/CLOCK_SECOND;
+                    cycle_prev_duration_s = curr_timestamp_s - cycle_start_timestamp_s;
+                    printf("New cycle begins. Previous cycle lasted for: %i\n", cycle_prev_duration_s);
+                    count_consec(is_detect_cycle(), curr_timestamp_s, cycle_start_timestamp_s);
+                    rssi_sum = 0;
+                    rssi_count = 0;
+                    cycle_start_timestamp_s = curr_timestamp_s;
 	            }
             }
         }
@@ -320,6 +326,9 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
 
     printf("CC2650 neighbour discovery\n");
     printf("Node %d will be sending packet of size %d Bytes\n", node_id, (int)sizeof(data_packet_struct));
+
+    // radio off
+    NETSTACK_RADIO.off();
 
     // initialize data packet
     data_packet.src_id = node_id;
