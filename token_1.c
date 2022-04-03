@@ -40,67 +40,70 @@ static int absent_timestamp_s;
 unsigned long cycle_start_timestamp_s;
 /*---------------------------------------------------------------------------*/
 static void count_consec(int, int, int);
+void set_active_slots(int *, int, int);
+int is_detect_cycle();
+void process_cycle();
 /*---------------------------------------------------------------------------*/
 PROCESS(cc2650_nbr_discovery_process, "cc2650 neighbour discovery process");
 AUTOSTART_PROCESSES(&cc2650_nbr_discovery_process);
 /*---------------------------------------------------------------------------*/
-static void count_consec(int is_detect_cycle, int curr_timestamp_s, int timestamp_s)
+
+/*
+Runs at the start of every new cycle.
+Checks the state of the device and counts the respective consecutive number.
+Absent 0: If consec increases to 15 then state changes to detect. Prints "Timestamp (in seconds) DETECT nodeID".
+Detect 1: If consec increases to 30 then state changes to absent. Prints "Timestamp (in seconds) ABSENT nodeID".
+*/
+static void count_consec(int is_detect_cycle, int curr_timestamp_s, int start_timestamp_s)
 {
-    printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, timestamp_s, consec, state_flag, is_detect_cycle);
+    printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect_cycle);
 	/* Detect mode */
-	if(state_flag)
+	if(state_flag && !is_detect_cycle)
 	{
-		if (!is_detect_cycle)
+		// Count the number of consecutives
+		consec += 1;
+		// Save timestamp if first
+		if (consec == 1)
 		{
-			// Count the number of consecutives
-			consec += 1;
-			// Save timestamp if first
-			if (consec == 1)
-			{
-				absent_timestamp_s = timestamp_s;
-			}
-			else if (consec == DETECT_TO_ABSENT)
-			{
-                printf("|----- Changing from detect to absent -----|\n");
-				// Need to change state
-				consec = 0;
-				state_flag = 0;
-				printf("%i ABSENT %i\n", absent_timestamp_s, TOKEN_2_ADDR);
-			}
+			absent_timestamp_s = start_timestamp_s;
 		}
-		else
+		else if (consec == DETECT_TO_ABSENT)
 		{
+            printf("|----- Changing from detect to absent -----|\n");
+			// Need to change state
 			consec = 0;
+			state_flag = 0;
+			printf("%i ABSENT %i\n", absent_timestamp_s, TOKEN_2_ADDR);
 		}
 	}
 	/* Absent mode */
-	else
+	else if (!state_flag && is_detect_cycle)
 	{
-		if (is_detect_cycle)
+		// Count the number of consecutives
+		consec += 1;
+		// Save timestamp if first
+		if (consec == 1)
 		{
-			// Count the number of consecutives
-			consec += 1;
-			// Save timestamp if first
-			if (consec == 1)
-			{
-				detect_timestamp_s = timestamp_s;
-			}
-			else if (consec == ABSENT_TO_DETECT)
-			{
-                printf("|----- Changing from absent to detect -----|\n");
-				// Need to change state
-				consec = 0;
-				state_flag = 1;
-				printf("%i DETECT %i\n", detect_timestamp_s, TOKEN_2_ADDR);
-			}
+			detect_timestamp_s = start_timestamp_s;
 		}
-		else
+		else if (consec == ABSENT_TO_DETECT)
 		{
+            printf("|----- Changing from absent to detect -----|\n");
+			// Need to change state
 			consec = 0;
+			state_flag = 1;
+			printf("%i DETECT %i\n", detect_timestamp_s, TOKEN_2_ADDR);
 		}
 	}
+    else
+    {
+        consec = 0;
+    }
 }
 
+/*
+Collects the RSSI when packet is received
+*/
 static void recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 {
 	// Data packet struct
@@ -108,7 +111,6 @@ static void recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 	memcpy(&received_packet, packetbuf_dataptr(), sizeof(data_packet_struct));
 	curr_timestamp = clock_time();
 	
-	// rssi_arr[rssi_index] = (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
 	rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
 	rssi_count += 1;
 
@@ -123,7 +125,6 @@ static void recv_uc(struct unicast_conn *c, const linkaddr_t *from)
 
 static const struct unicast_callbacks unicast_callbacks = {recv_uc};
 static struct unicast_conn uc;
-/*---------------------------------------------------------------------------*/
 
 /*
 Populates an array with time slots to remain active for.
@@ -176,6 +177,10 @@ void set_active_slots(int *buf, int row_num, int col_num)
     }
 }
 
+/*
+Helper function.
+Determines if the node is within 3m based on the ave RSSI of packets received in a cycle.
+*/
 int is_detect_cycle()
 {
 	int ave_rssi;
@@ -195,12 +200,31 @@ int is_detect_cycle()
 	}
 }
 
+/*
+At the start of every cycle, processes the information of the last cycle.
+Updates the timestamp of the start of a cycle.
+*/
+void process_cycle()
+{
+    int cycle_prev_duration_s;
+    int curr_timestamp_s;
+
+    curr_timestamp_s = clock_time()/CLOCK_SECOND;
+    cycle_prev_duration_s = curr_timestamp_s - cycle_start_timestamp_s;
+    printf("New cycle begins. Previous cycle lasted for: %i\n", cycle_prev_duration_s);
+    count_consec(is_detect_cycle(), curr_timestamp_s, cycle_start_timestamp_s);
+    rssi_sum = 0;
+    rssi_count = 0;
+    cycle_start_timestamp_s = curr_timestamp_s;
+}
+
+/*
+Determines the packets to be sent based on the sleep and awake modes
+*/
 char sender_scheduler(struct rtimer *t, void *ptr)
 {
     static uint16_t i = 0;
     static int NumSleep = 0;
-    int cycle_prev_duration_s;
-    int curr_timestamp_s;
 
     linkaddr_t addr;
     PT_BEGIN(&pt);
@@ -248,13 +272,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             send_index = (send_index == SEND_ARR_LEN - 1) ? 0 : send_index + 1;
             if (curr_pos == 0)
             {
-                curr_timestamp_s = clock_time()/CLOCK_SECOND;
-                cycle_prev_duration_s = curr_timestamp_s - cycle_start_timestamp_s;
-                printf("New cycle begins. Previous cycle lasted for: %i\n", cycle_prev_duration_s);
-            	count_consec(is_detect_cycle(), curr_timestamp_s, cycle_start_timestamp_s);
-        		rssi_sum = 0;
-				rssi_count = 0;
-                cycle_start_timestamp_s = curr_timestamp_s;
+                process_cycle();
             }
         }
         /* Sleep mode */
@@ -289,13 +307,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
                 curr_pos = (curr_pos == TOTAL_SLOTS_LEN - 1) ? 0 : curr_pos + 1;
                 if (curr_pos == 0)
 	            {
-                    curr_timestamp_s = clock_time()/CLOCK_SECOND;
-                    cycle_prev_duration_s = curr_timestamp_s - cycle_start_timestamp_s;
-                    printf("New cycle begins. Previous cycle lasted for: %i\n", cycle_prev_duration_s);
-                    count_consec(is_detect_cycle(), curr_timestamp_s, cycle_start_timestamp_s);
-                    rssi_sum = 0;
-                    rssi_count = 0;
-                    cycle_start_timestamp_s = curr_timestamp_s;
+                    process_cycle();
 	            }
             }
         }
