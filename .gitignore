@@ -1,0 +1,9 @@
+/obj_sky
+/obj_srf06-cc26xx
+*.a
+*.map
+symbols.c
+symbols.h
+*.sky
+*.elf
+*.bin
