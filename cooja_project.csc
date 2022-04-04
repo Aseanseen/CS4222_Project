@@ -24,9 +24,9 @@
       org.contikios.cooja.mspmote.SkyMoteType
       <identifier>sky1</identifier>
       <description>Sky Mote Type #sky1</description>
-      <source EXPORT="discard">[CONTIKI_DIR]/CS4222_Code/project/token_1.c</source>
+      <source EXPORT="discard">[CONTIKI_DIR]/CS4222_Project/token_1.c</source>
       <commands EXPORT="discard">make token_1.sky TARGET=sky</commands>
-      <firmware EXPORT="copy">[CONTIKI_DIR]/CS4222_Code/project/token_1.sky</firmware>
+      <firmware EXPORT="copy">[CONTIKI_DIR]/CS4222_Project/token_1.sky</firmware>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.RimeAddress</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.IPAddress</moteinterface>
@@ -47,9 +47,9 @@
       org.contikios.cooja.mspmote.SkyMoteType
       <identifier>sky2</identifier>
       <description>Sky Mote Type #sky2</description>
-      <source EXPORT="discard">[CONTIKI_DIR]/CS4222_Code/project/token_2.c</source>
+      <source EXPORT="discard">[CONTIKI_DIR]/CS4222_Project/token_2.c</source>
       <commands EXPORT="discard">make token_2.sky TARGET=sky</commands>
-      <firmware EXPORT="copy">[CONTIKI_DIR]/CS4222_Code/project/token_2.sky</firmware>
+      <firmware EXPORT="copy">[CONTIKI_DIR]/CS4222_Project/token_2.sky</firmware>
       <moteinterface>org.contikios.cooja.interfaces.Position</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.RimeAddress</moteinterface>
       <moteinterface>org.contikios.cooja.interfaces.IPAddress</moteinterface>
