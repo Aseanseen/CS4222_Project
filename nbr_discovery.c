@@ -8,6 +8,7 @@
 #include "defs_and_types.h"
 #include "net/netstack.h"
 #include "random.h"
+#include <math.h>
 #ifdef TMOTE_SKYS
 #include "powertrace.h"
 #endif
@@ -39,8 +40,25 @@ static int send_index = 0;
 static int curr_pos = 0;
 unsigned long last_receive, receive_delay, max_receive_delay;
 /*---------------------------------------------------------------------------*/
+// Formula for measuring distance using RSSI = 10^((MEASURED_POWER - RSSI) / ENVIRON_FACTOR)
+#define ENVIRON_FACTOR 22.0 // Free space = 2 (after multiply by 10)
+#define MEASURED_POWER -71
+#define ERROR_MARGIN 0.5 // Error margin of 0.5
+/*---------------------------------------------------------------------------*/
 PROCESS(cc2650_nbr_discovery_process, "cc2650 neighbour discovery process");
 AUTOSTART_PROCESSES(&cc2650_nbr_discovery_process);
+/*---------------------------------------------------------------------------*/
+static bool
+check_distance(signed short rssi) {
+    // Estimate distance
+    int numerator = MEASURED_POWER - rssi;
+    float exp = (float) numerator / ENVIRON_FACTOR;
+    float dist = powf(10, exp);
+    printf("Estimated distance: %d.%d\n", (int) dist, ((int) (dist * 100)) % 100);
+
+    // Check if distance is within error margin
+    return dist + ERROR_MARGIN < 3 || dist - ERROR_MARGIN < 3;
+}
 /*---------------------------------------------------------------------------*/
 static void
 broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
@@ -51,6 +69,16 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     printf("Send seq# %lu  @ %8lu  %3lu.%03lu\n", data_packet.seq, curr_timestamp, curr_timestamp / CLOCK_SECOND, ((curr_timestamp % CLOCK_SECOND) * 1000) / CLOCK_SECOND);
 
     printf("Received packet from node %lu with sequence number %lu and timestamp %3lu.%03lu\n", received_packet.src_id, received_packet.seq, received_packet.timestamp / CLOCK_SECOND, ((received_packet.timestamp % CLOCK_SECOND) * 1000) / CLOCK_SECOND);
+    
+    // PRINT RSSI
+    printf("RSSI: %d\n", (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI));
+    signed short rssi = (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
+
+    // CHECK IF CLOSE PROXIMITY
+    bool is_close = check_distance(rssi);
+    if (is_close) printf("==> Device in close proximity!!\n");
+    else printf("XXX Not within +-3m\n");
+
     /* Code to get the max receive delay */
     if (last_receive == 0)
     {
@@ -128,6 +156,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
     curr_timestamp = clock_time();
     printf("Start clock %lu ticks, timestamp %3lu.%03lu\n", curr_timestamp, curr_timestamp / CLOCK_SECOND, ((curr_timestamp % CLOCK_SECOND) * 1000) / CLOCK_SECOND);
 
+
     while (1)
     {
         /* 
@@ -144,6 +173,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             printf("SENDING\n");
             // radio on
             NETSTACK_RADIO.on();
+
+            // SET RADIO TRANSMIT POWER
+            //NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
 
             for (i = 0; i < NUM_SEND; i++)
             { // #define NUM_SEND 2 (in defs_and_types.h)
