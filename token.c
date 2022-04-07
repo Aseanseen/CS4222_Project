@@ -30,75 +30,132 @@ static long BEACON_INTERVAL_FREQ_SCALED = TOTAL_SLOTS_LEN  * 1000 / LATENCY_BOUN
 static int send_arr[SEND_ARR_LEN];
 static int send_index = 0;
 static int curr_pos = 0;
-static int state_flag = 0;
 /*---------------------------------------------------------------------------*/
-signed short rssi_sum;
-static int rssi_count;
-static int consec = 0;
 static int detect_timestamp_s;
 static int absent_timestamp_s;
 unsigned long cycle_start_timestamp_s;
 /*---------------------------------------------------------------------------*/
-static void count_consec(int, int, int);
+static void count_consec(int, int);
 void set_active_slots(int *, int, int);
-int is_detect_cycle();
+int is_detect_cycle(struct TokenData*);
 void process_cycle();
 /*---------------------------------------------------------------------------*/
 PROCESS(cc2650_nbr_discovery_process, "cc2650 neighbour discovery process");
 AUTOSTART_PROCESSES(&cc2650_nbr_discovery_process);
 /*---------------------------------------------------------------------------*/
+struct TokenData* dummyToken;
+/*---------------------------------------------------------------------------*/
+
+/*
+Helper function.
+Determines if the node is within 3m based on the ave RSSI of packets received in a cycle.
+*/
+int is_detect_cycle(struct TokenData* dummyToken)
+{
+    int ave_rssi;
+    // did not receive any packet in the cycle
+    printf("RSSI COUNT %i\n", dummyToken->rssi_count);
+    if (dummyToken->rssi_count == 0)
+    {
+        // did not receive
+        return 0;
+    }
+    else
+    {
+        ave_rssi = dummyToken->rssi_sum / dummyToken->rssi_count;
+        printf("Ave RSSI %i\n", ave_rssi);
+        // Ave RSSI values indicates detect < 3m
+        return ave_rssi > RSSI_THRESHOLD_3M;
+    }
+}
 
 /*
 Runs at the start of every new cycle.
-Checks the state of the device and counts the respective consecutive number.
+Checks the state of all tokens in the hash table then counts the respective consecutive number.
 Absent 0: If consec increases to 15 then state changes to detect. Prints "Timestamp (in seconds) DETECT nodeID".
 Detect 1: If consec increases to 30 then state changes to absent. Prints "Timestamp (in seconds) ABSENT nodeID".
 */
-static void count_consec(int is_detect_cycle, int curr_timestamp_s, int start_timestamp_s)
+static void count_consec(int curr_timestamp_s, int start_timestamp_s)
 {
-    printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect_cycle);
-	/* Detect mode */
-	if(state_flag && !is_detect_cycle)
-	{
-		// Count the number of consecutives
-		consec += 1;
-		// Save timestamp if first
-		if (consec == 1)
-		{
-			absent_timestamp_s = start_timestamp_s;
-		}
-		else if (consec == DETECT_TO_ABSENT)
-		{
-            printf("|----- Changing from detect to absent -----|\n");
-			// Need to change state
-			consec = 0;
-			state_flag = 0;
-			printf("%i ABSENT %i\n", absent_timestamp_s, TOKEN_2_ADDR);
-		}
-	}
-	/* Absent mode */
-	else if (!state_flag && is_detect_cycle)
-	{
-		// Count the number of consecutives
-		consec += 1;
-		// Save timestamp if first
-		if (consec == 1)
-		{
-			detect_timestamp_s = start_timestamp_s;
-		}
-		else if (consec == ABSENT_TO_DETECT)
-		{
-            printf("|----- Changing from absent to detect -----|\n");
-			// Need to change state
-			consec = 0;
-			state_flag = 1;
-			printf("%i DETECT %i\n", detect_timestamp_s, TOKEN_2_ADDR);
-		}
-	}
-    else
+    int i;
+    int is_detect;
+    int consec;
+    int state_flag;
+    int tokenId;
+    // Go through the hash table to find all tokens 
+    for(i = 0; i<SIZE; i++)
     {
-        consec = 0;
+        dummyToken = hashArray[i];
+        if(dummyToken != NULL)
+        {
+            state_flag = dummyToken->state_flag;
+            consec = dummyToken->consec;
+            tokenId = dummyToken->key;
+            is_detect = is_detect_cycle(dummyToken);
+            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
+
+        	/* Detect mode */
+        	if(state_flag && !is_detect)
+        	{
+        		// Count the number of consecutives
+        		consec += 1;
+        		// Save timestamp if first
+        		if (consec == 1)
+        		{
+        			absent_timestamp_s = start_timestamp_s;
+        		}
+        		else if (consec == DETECT_TO_ABSENT)
+        		{
+                    printf("|----- Changing from detect to absent -----|\n");
+        			// Need to change state
+        			consec = 0;
+        			state_flag = 0;
+        			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
+        		}
+        	}
+        	/* Absent mode */
+        	else if (!state_flag && is_detect)
+        	{
+        		// Count the number of consecutives
+        		consec += 1;
+        		// Save timestamp if first
+        		if (consec == 1)
+        		{
+        			detect_timestamp_s = start_timestamp_s;
+        		}
+        		else if (consec == ABSENT_TO_DETECT)
+        		{
+                    printf("|----- Changing from absent to detect -----|\n");
+        			// Need to change state
+        			consec = 0;
+        			state_flag = 1;
+        			printf("%i DETECT %i\n", detect_timestamp_s, tokenId);
+        		}
+        	}
+            else
+            {
+                consec = 0;
+            }
+            dummyToken->consec = consec;
+            dummyToken->state_flag = state_flag;
+            dummyToken->rssi_sum = 0;
+            dummyToken->rssi_count = 0;
+        }
     }
+}
+
+/*
+At the start of every cycle, processes the information of the last cycle.
+Updates the timestamp of the start of a cycle.
+*/
+void process_cycle()
+{
+    int curr_timestamp_s;
+
+    curr_timestamp_s = clock_time()/CLOCK_SECOND;
+    printf("New cycle begins. Previous cycle lasted for: %i\n", curr_timestamp_s - cycle_start_timestamp_s);
+    count_consec(curr_timestamp_s, cycle_start_timestamp_s);
+    cycle_start_timestamp_s = curr_timestamp_s;
 }
 
 /*
@@ -110,9 +167,16 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 	printf("RECEIVING\n");
 	memcpy(&received_packet, packetbuf_dataptr(), sizeof(data_packet_struct));
 	curr_timestamp = clock_time();
-	
-	rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
-	rssi_count += 1;
+
+    // Find the token in hash table
+    dummyToken = search(received_packet.src_id);
+    // First entry of token
+	if (dummyToken == NULL)
+    {
+        dummyToken = insert(received_packet.src_id,0,0,0,0);
+    }
+    dummyToken->rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
+    dummyToken->rssi_count += 1;
 
 	printf(
 		"Timestamp: %3lu.%03lu Received packet from node id: %lu RSSI: %d\n", 
@@ -175,47 +239,6 @@ void set_active_slots(int *buf, int row_num, int col_num)
         temp = row_num * N + j;
         buf[insert_index + j] = temp;
     }
-}
-
-/*
-Helper function.
-Determines if the node is within 3m based on the ave RSSI of packets received in a cycle.
-*/
-int is_detect_cycle()
-{
-	int ave_rssi;
-	// did not receive any packet in the cycle
-    printf("RSSI COUNT %i\n", rssi_count);
-	if (rssi_count == 0)
-	{
-		// did not receive
-		return 0;
-	}
-	else
-	{
-		ave_rssi = rssi_sum / rssi_count;
-        printf("Ave RSSI %i\n", ave_rssi);
-		// Ave RSSI values indicates detect < 3m
-		return ave_rssi > RSSI_THRESHOLD_3M;
-	}
-}
-
-/*
-At the start of every cycle, processes the information of the last cycle.
-Updates the timestamp of the start of a cycle.
-*/
-void process_cycle()
-{
-    int cycle_prev_duration_s;
-    int curr_timestamp_s;
-
-    curr_timestamp_s = clock_time()/CLOCK_SECOND;
-    cycle_prev_duration_s = curr_timestamp_s - cycle_start_timestamp_s;
-    printf("New cycle begins. Previous cycle lasted for: %i\n", cycle_prev_duration_s);
-    count_consec(is_detect_cycle(), curr_timestamp_s, cycle_start_timestamp_s);
-    rssi_sum = 0;
-    rssi_count = 0;
-    cycle_start_timestamp_s = curr_timestamp_s;
 }
 
 /*
