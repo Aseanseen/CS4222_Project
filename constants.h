@@ -1,9 +1,6 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
-#define TOKEN_1_ADDR 0x5403
-#define TOKEN_2_ADDR 0x2082
-
 /* Quantity is varied to choose the minimal power consumption. */
 #define N 3
 #define TOTAL_SLOTS_LEN N * N
