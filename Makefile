@@ -1,6 +1,7 @@
 DEFINES+=PROJECT_CONF_H=\"project-conf.h\"
+CONTIKI_PROJECT = token
 APPS+=powertrace
-all: token_1 token_2
+all: $(CONTIKI_PROJECT)
 
 CONTIKI_WITH_RIME = 1
 
