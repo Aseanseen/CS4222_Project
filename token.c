@@ -83,7 +83,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     int state_flag;
     int tokenId;
     // Go through the hash table to find all tokens 
-    for(i = 0; i<SIZE; i++)
+    for(i = 0; i<HASH_TABLE_SIZE; i++)
     {
         dummyToken = hashArray[i];
         if(dummyToken != NULL)

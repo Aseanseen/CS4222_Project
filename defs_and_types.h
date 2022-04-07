@@ -8,7 +8,7 @@ typedef struct {
   unsigned long src_id;
 } data_packet_struct;
 /*---------------------------------------------------------------------------*/
-#define SIZE 5
+#define HASH_TABLE_SIZE 5
 
 struct TokenData {
    signed short rssi_sum;
@@ -18,10 +18,10 @@ struct TokenData {
    int key;
 };
 
-struct TokenData* hashArray[SIZE];
+struct TokenData* hashArray[HASH_TABLE_SIZE];
 
 int hashCode(int key) {
-   return key % SIZE;
+   return key % HASH_TABLE_SIZE;
 }
 
 struct TokenData *search(int key) {
@@ -38,7 +38,7 @@ struct TokenData *search(int key) {
       ++hashIndex;
 		
       //wrap around the table
-      hashIndex %= SIZE;
+      hashIndex %= HASH_TABLE_SIZE;
    }        
 	
    return NULL;        
@@ -61,7 +61,7 @@ struct TokenData *insert(int key,signed short rssi_sum,int rssi_count,int consec
       ++hashIndex;
 		
       //wrap around the table
-      hashIndex %= SIZE;
+      hashIndex %= HASH_TABLE_SIZE;
    }
 	
    hashArray[hashIndex] = item;
