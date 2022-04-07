@@ -14,6 +14,8 @@
 5. Run `./run.sh` to observe the output.
 
 # How the code works
+- There is a hash table that stores `TokenData`. The key is the node id.
+- Every new token that has never been detected by the token before will be stored in the hash table. This is up to a maximum number of tokens, which is defined in `def_and_types.h`
 - There are 2 modes, absent and detect. The token is initially absent.
 - A cycle refers to one complete round of the send and sleep slots. At the start of every new cycle, process the information of the last cycle. This means counting if there are consecutive cycles.
 - Upon reaching the consecutive number of cycles, change state. Absent: if there are 15 seconds worth of cycles where the other token has been detected, change to detect mode. Detect: if there are 30 seconds worth of cycles where the other token is absent, change to absent mode.
