@@ -1,5 +1,5 @@
 DEFINES+=PROJECT_CONF_H=\"project-conf.h\"
-CONTIKI_PROJECT = token
+CONTIKI_PROJECT = nbr_discovery_rssi_updated
 APPS+=powertrace
 all: $(CONTIKI_PROJECT)
 

@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "math.h": "c",
+        "cstdlib": "c",
+        "algorithm": "c",
+        "functional": "c",
+        "*.tcc": "c",
+        "deque": "c",
+        "string": "c",
+        "unordered_map": "c",
+        "vector": "c",
+        "ostream": "c"
+    }
+}

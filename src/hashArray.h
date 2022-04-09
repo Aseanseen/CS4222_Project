@@ -1,32 +1,47 @@
-/*	Author: ebramkw
-	Typedef and definitions	*/
+#ifndef __HASHARRAY_H__
+#define __HASHARRAY_H__
 
-/*---------------------------------------------------------------------------*/
-#define NUM_SEND 2
-/*---------------------------------------------------------------------------*/
-typedef struct {
-  unsigned long src_id;
-} data_packet_struct;
+#include "contiki.h"
+#include "lib/memb.h"
+
+typedef enum {
+    CONTACT = 0x3,
+    NOCONTACT_TOO_FAR = 0x1,
+    NOCONTACT_DISCONNECT = 0x0
+} STATE_CONN;
+
 /*---------------------------------------------------------------------------*/
 #define HASH_TABLE_SIZE 5
 
 struct TokenData {
+   // Sum of RSSI values within a eval cycle.
    signed short rssi_sum;
+   // Num of RSSI values.
    int rssi_count;
+   // Num of consecutive absent/present
    int consec;
-   int state_flag;
+   // Records the most recent absent/present
+   STATE_CONN is_prev_detect;
+   STATE_CONN is_curr_detect;
+   // ID of the node.
    int key;
+
+   int begin_timestamp_s;
 };
 
-struct TokenData* hashArray[HASH_TABLE_SIZE];
 
-int hashCode(int key) {
+
+struct TokenData* hashArray[HASH_TABLE_SIZE] = {NULL}; 
+
+// Ensures index provided is always in range.
+int hashArray_hashCode(int key) {
    return key % HASH_TABLE_SIZE;
 }
 
-struct TokenData *search(int key) {
+// Returns token data given key.
+struct TokenData *hashArray_search(int key) {
    //get the hash 
-   int hashIndex = hashCode(key);  
+   int hashIndex = hashArray_hashCode(key);  
 	
    //move in array until an empty 
    while(hashArray[hashIndex] != NULL) {
@@ -44,16 +59,17 @@ struct TokenData *search(int key) {
    return NULL;        
 }
 
-struct TokenData *insert(int key,signed short rssi_sum,int rssi_count,int consec,int state_flag) {
-   struct TokenData *item = (struct TokenData*) malloc(sizeof(struct TokenData));
+struct TokenData* hashArray_insert(struct memb tmp, int key,signed short rssi_sum,int rssi_count,int consec,bool is_detect) {
+
+   struct TokenData *item = memb_alloc(&tmp);
    item->rssi_sum = rssi_sum;
    item->rssi_count = rssi_count;
    item->consec = consec;
-   item->state_flag = state_flag;
+   item->is_prev_detect = is_detect;
    item->key = key;
 
    //get the hash 
-   int hashIndex = hashCode(key);
+   int hashIndex = hashArray_hashCode(key);
 
    //move in array until an empty or deleted cell
    while(hashArray[hashIndex] != NULL && hashArray[hashIndex]->key != -1) {
@@ -67,4 +83,5 @@ struct TokenData *insert(int key,signed short rssi_sum,int rssi_count,int consec
    hashArray[hashIndex] = item;
    return item;
 }
-/*---------------------------------------------------------------------------*/
+
+#endif
