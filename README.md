@@ -27,3 +27,11 @@
 - Find the best setting for power saving
 - Measure energy consumption using Cooja
 - Maybe change the `DETECT_TO_ABSENT`, `ABSENT_TO_DETECT` to change based on the actual time of 30s and 15s, rather than the current implementation which assumes each cycle lasts for 1s.
+
+# Directory changes - KW
+- `token.c` - Main code. Contains A^2 protocol.
+- `constants.h` - Contains constants used throughout the code. 
+- `dist_utils.h` - RSSI-Distance approximation code.
+- `quorum_utils.h` - Determining of quorum intervals where the device sleeps and operates based on A^2 protocol.
+- `cycle_logic.h` - Contains logic code on cycle paradigm of the devices. Determines when a device is detected or absent for a certain amount of time.
+- `hashArray.h` - Hash Array Code to store information by device address.

@@ -1,12 +1,8 @@
 #ifndef __DIST_UTILS_H__
 #define __DIST_UTILS_H__
 #include "contiki.h"
+#include "constants.h"
 
-#define ENVIRON_FACTOR 22.0 // Free space = 2 (after multiply by 10)
-#define MEASURED_POWER -71
-#define ERROR_MARGIN 0.5 // Error margin of 0.5
-
-#define DISTANCE_THRESHOLD 1
 /* 
     Prints decimals up to 3 s.f 
 */

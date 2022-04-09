@@ -25,10 +25,10 @@
 #define DETECT_TO_ABSENT 30
 #define NUM_SEND 2
 
-typedef struct {
-  unsigned long src_id;
-  unsigned long timestamp;
-  unsigned long seq;
-} data_packet_struct;
+// Distance utils constants
+#define ENVIRON_FACTOR 22.0 // Free space = 2 (after multiply by 10)
+#define MEASURED_POWER -71
+#define ERROR_MARGIN 0.5 // Error margin of 0.5
+#define DISTANCE_THRESHOLD 1
 
 #endif

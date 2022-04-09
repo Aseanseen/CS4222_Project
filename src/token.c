@@ -77,6 +77,7 @@ broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     // Accumulate the rssi value.
     dummyToken->rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
     dummyToken->rssi_count += 1;
+    // Write to the second bit to signify the first condition is fulfilled.
     dummyToken->is_curr_detect |= (1 << NOCONTACT_DISCONNECT);
     leds_off(LEDS_GREEN);
 	/*
