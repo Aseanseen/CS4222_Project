@@ -71,8 +71,7 @@ is_distance_within_3m(signed short rssi) {
     printf("\n");
 
     // Check if distance is within error margin
-    return dist + ERROR_MARGIN < DISTANCE_THRESHOLD || dist - ERROR_MARGIN < DISTANCE_THRESHOLD;
-}
+    return (dist + ERROR_MARGIN) < DISTANCE_THRESHOLD ;
 
 /*
 Helper function.
