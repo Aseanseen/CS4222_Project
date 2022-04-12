@@ -1,8 +1,6 @@
-/*	Author: ebramkw
-	Typedef and definitions	*/
+#include "lib/memb.h"
 
 /*---------------------------------------------------------------------------*/
-#define NUM_SEND 2
 /*---------------------------------------------------------------------------*/
 typedef struct {
   unsigned long src_id;
@@ -44,7 +42,7 @@ struct TokenData *search(int key) {
    return NULL;        
 }
 
-struct TokenData *insert(int key,signed short rssi_sum,int rssi_count,int consec,int state_flag) {
+struct TokenData *insert(struct memb tmp, int key,signed short rssi_sum,int rssi_count,int consec,int state_flag) {
    struct TokenData *item = (struct TokenData*) malloc(sizeof(struct TokenData));
    item->rssi_sum = rssi_sum;
    item->rssi_count = rssi_count;
