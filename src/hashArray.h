@@ -13,6 +13,10 @@ typedef enum {
 /*---------------------------------------------------------------------------*/
 #define HASH_TABLE_SIZE 5
 
+typedef struct {
+  unsigned long src_id;
+} data_packet_struct;
+
 struct TokenData {
    // Sum of RSSI values within a eval cycle.
    signed short rssi_sum;

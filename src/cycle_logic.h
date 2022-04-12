@@ -111,6 +111,7 @@ void count_consec(struct TokenData* dummyToken, int curr_timestamp_s, int start_
                     printf(
                         "[STATE COUNT > THRESHOLD] Was sufficiently PRESENT!\n"
                     );
+			printf("%i DETECT %i\n", begin_timestamp_s, tokenId);
         
                 } 
                 
@@ -123,7 +124,7 @@ void count_consec(struct TokenData* dummyToken, int curr_timestamp_s, int start_
                     );         
                 }
                         
-                // printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
+                printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
             
         	}
 
