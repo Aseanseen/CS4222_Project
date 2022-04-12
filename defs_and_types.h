@@ -43,7 +43,7 @@ struct TokenData *search(int key) {
 }
 
 struct TokenData *insert(struct memb tmp, int key,signed short rssi_sum,int rssi_count,int consec,int state_flag) {
-   struct TokenData *item = (struct TokenData*) malloc(sizeof(struct TokenData));
+   struct TokenData *item = memb_alloc(&tmp);
    item->rssi_sum = rssi_sum;
    item->rssi_count = rssi_count;
    item->consec = consec;
