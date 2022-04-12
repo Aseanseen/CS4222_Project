@@ -109,22 +109,23 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     int consec;
     int state_flag;
     int tokenId;
-    int count = 0;
+    struct TokenData* _dummyToken;
     // Go through the hash table to find all tokens 
-    printf("\n\n----------------------------------");
+    printf("\n----------------------------------\n");
+    
     for(i = 0; i<HASH_TABLE_SIZE; i++)
     {
         
-        dummyToken = hashArray[i];
-        if(dummyToken != NULL)
+        _dummyToken = hashArray[i];
+        display();
+        if(_dummyToken != NULL && _dummyToken->key != -1)
         {
-            count++;
-            state_flag = dummyToken->state_flag;
-            consec = dummyToken->consec;
-            tokenId = dummyToken->key;
-            is_detect = is_detect_cycle(    dummyToken);
-
-            printf("NODE %d CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", dummyToken->key, curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
+            state_flag = _dummyToken->state_flag;
+            consec = _dummyToken->consec;
+            tokenId = _dummyToken->key;
+            is_detect = is_detect_cycle(_dummyToken);
+            printf("NODE %d", _dummyToken->key);
+            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
@@ -143,8 +144,8 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 0;
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
-                    dummyToken->detect_to_absent_ts = absent_timestamp_s;
-                    printf("Node has been present for --- %d\n", dummyToken->detect_to_absent_ts - dummyToken->absent_to_detect_ts);
+                    _dummyToken->detect_to_absent_ts = absent_timestamp_s;
+                    printf("Node has been present for --- %d\n", _dummyToken->detect_to_absent_ts - _dummyToken->absent_to_detect_ts);
         		}
         	}
         	/* Absent mode */
@@ -164,26 +165,26 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 1;
         			printf("%i DETECT %i\n", detect_timestamp_s, tokenId);
-                    dummyToken->absent_to_detect_ts = detect_timestamp_s;
+                    _dummyToken->absent_to_detect_ts = detect_timestamp_s;
         		}
         	}
             else
             {
                 consec = 0;
             }
+            // printf("NODE %d", _dummyToken->key);
+            // printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
             if (!(consec || state_flag || is_detect)) {
-                delete(dummyToken);
+                delete(_dummyToken);
             }
 
-            dummyToken->consec = consec;
-            dummyToken->state_flag = state_flag;
-            dummyToken->rssi_sum = 0;
-            dummyToken->rssi_count = 0;
+            _dummyToken->consec = consec;
+            _dummyToken->state_flag = state_flag;
+            _dummyToken->rssi_sum = 0;
+            _dummyToken->rssi_count = 0;
         }
     }
-    printf("count: %d\n", count);
-    count = 0;
 }
 
 /*
@@ -212,21 +213,20 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 
     // Find the token in hash table
     dummyToken = search(received_packet.src_id);
+
     // First entry of token
 	if (dummyToken == NULL)
     {
         dummyToken = insert(tmp, received_packet.src_id,0,0,0,0);
+    } else if  (dummyToken->key == -1) {
+        dummyToken = overwrite(dummyToken, received_packet.src_id,0,0,0,0);
     }
     dummyToken->rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
     dummyToken->rssi_count += 1;
 
-	// printf(
-	// 	"Timestamp: %3lu.%03lu Received packet from node id: %lu RSSI: %d\n", 
-	// 	curr_timestamp / CLOCK_SECOND, 
-	// 	((curr_timestamp % CLOCK_SECOND)*1000) / CLOCK_SECOND, 
-	// 	received_packet.src_id, 
-	// 	(signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI)
-	// 	);
+	printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+    display();
+    printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
 }
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
