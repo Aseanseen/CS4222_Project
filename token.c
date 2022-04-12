@@ -137,7 +137,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 0;
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
-                    dummyToken->detect_to_absent_ts = curr_timestamp_s;
+                    dummyToken->detect_to_absent_ts = absent_timestamp_s;
                     printf("Node has been present for --- %d\n", dummyToken->detect_to_absent_ts - dummyToken->absent_to_detect_ts);
         		}
         	}
@@ -158,7 +158,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 1;
         			printf("%i DETECT %i\n", detect_timestamp_s, tokenId);
-                    dummyToken->absent_to_detect_ts = curr_timestamp_s;
+                    dummyToken->absent_to_detect_ts = detect_timestamp_s;
         		}
         	}
             else
