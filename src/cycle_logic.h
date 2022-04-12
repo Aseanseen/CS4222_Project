@@ -105,8 +105,7 @@ void count_consec(struct TokenData* dummyToken, int curr_timestamp_s, int start_
                 // Need to change state
                 else if (
                     (is_curr_detect == CONTACT) && 
-                    (consec_same_is_detect > 5) &&
-                    (curr_timestamp_s - begin_timestamp_s > ABSENT_TO_DETECT_EVAL_CYCLE_TIME)
+                    (consec_same_is_detect > ABSENT_TO_DETECT_EVAL_CYCLE_TIME / UNIT_CYCLE_TIME)
                 ) {
                     printf(
                         "[STATE COUNT > THRESHOLD] Was sufficiently PRESENT!\n"
@@ -116,7 +115,7 @@ void count_consec(struct TokenData* dummyToken, int curr_timestamp_s, int start_
                 
                 else if (
                     (is_curr_detect != CONTACT) &&
-                    (curr_timestamp_s - begin_timestamp_s > DETECT_TO_ABSENT_EVAL_CYCLE_TIME)
+                    (consec_same_is_detect > DETECT_TO_ABSENT_EVAL_CYCLE_TIME / UNIT_CYCLE_TIME)
                 ) {
                     printf(
                         "[STATE COUNT > THRESHOLD] Was sufficiently ABSENT!\n"
