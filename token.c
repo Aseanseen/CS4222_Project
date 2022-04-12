@@ -72,6 +72,7 @@ is_distance_within_3m(signed short rssi) {
 
     // Check if distance is within error margin
     return (dist + ERROR_MARGIN) < DISTANCE_THRESHOLD ;
+}
 
 /*
 Helper function.
@@ -139,6 +140,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
                     dummyToken->detect_to_absent_ts = absent_timestamp_s;
                     printf("Node has been present for --- %d\n", dummyToken->detect_to_absent_ts - dummyToken->absent_to_detect_ts);
+                    delete(dummyToken);
         		}
         	}
         	/* Absent mode */
