@@ -137,6 +137,8 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 0;
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
+                    dummyToken->detect_to_absent_ts = curr_timestamp_s;
+                    printf("Node has been present for --- %d\n", dummyToken->detect_to_absent_ts - dummyToken->absent_to_detect_ts);
         		}
         	}
         	/* Absent mode */
@@ -156,6 +158,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 1;
         			printf("%i DETECT %i\n", detect_timestamp_s, tokenId);
+                    dummyToken->absent_to_detect_ts = curr_timestamp_s;
         		}
         	}
             else
@@ -287,11 +290,11 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             If the time slot is to send,
             The curr_pos will correspond with the send index pointed at an element in the active slot buffer.
         */
-        printf("|----- send_slot = %d, curr_slot = %d -----|\n", send_arr[send_index], curr_pos);
+        // printf("|----- send_slot = %d, curr_slot = %d -----|\n", send_arr[send_index], curr_pos);
         /* Awake mode */
         if (send_arr[send_index] == curr_pos)
         {
-            printf("SENDING\n");
+            // printf("SENDING\n");
 
             // radio on
             NETSTACK_RADIO.on();
@@ -318,7 +321,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
         /* Sleep mode */
         else
         {
-            printf("SLEEPING\n");
+            // printf("SLEEPING\n");
 
             // radio off
             NETSTACK_RADIO.off();
@@ -336,7 +339,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             {
                 NumSleep = TOTAL_SLOTS_LEN + send_arr[send_index] - curr_pos;
             }
-            printf("Sleep for %d slots \n", NumSleep);
+            // printf("Sleep for %d slots \n", NumSleep);
 
             // NumSleep should be a constant or static int
             for (i = 0; i < NumSleep; i++)
