@@ -3,7 +3,7 @@
 
 #define ABSENT_TO_DETECT_S                  15
 #define DETECT_TO_ABSENT_S                  30
-#define UNIT_CYCLE_TIME_S                   3
+#define UNIT_CYCLE_TIME_S                   1
 
 /* Quantity is varied to choose the minimal power consumption. */
 #define N 3
