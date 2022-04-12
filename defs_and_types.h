@@ -14,6 +14,8 @@ struct TokenData {
    int consec;
    int state_flag;
    int key;
+   int detect_to_absent_ts;
+   int absent_to_detect_ts;
 };
 
 struct TokenData* hashArray[HASH_TABLE_SIZE];
@@ -49,6 +51,8 @@ struct TokenData *insert(struct memb tmp, int key,signed short rssi_sum,int rssi
    item->consec = consec;
    item->state_flag = state_flag;
    item->key = key;
+   item->detect_to_absent_ts = 0;
+   item->absent_to_detect_ts = 0;
 
    //get the hash 
    int hashIndex = hashCode(key);

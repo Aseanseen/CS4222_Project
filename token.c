@@ -71,8 +71,7 @@ is_distance_within_3m(signed short rssi) {
     printf("\n");
 
     // Check if distance is within error margin
-    return dist + ERROR_MARGIN < DISTANCE_THRESHOLD || dist - ERROR_MARGIN < DISTANCE_THRESHOLD;
-}
+    return (dist + ERROR_MARGIN) < DISTANCE_THRESHOLD ;
 
 /*
 Helper function.
@@ -82,7 +81,7 @@ int is_detect_cycle(struct TokenData* dummyToken)
 {
     int ave_rssi;
     // did not receive any packet in the cycle
-    printf("RSSI COUNT %i\n", dummyToken->rssi_count);
+    // printf("RSSI COUNT %i\n", dummyToken->rssi_count);
     if (dummyToken->rssi_count == 0)
     {
         // did not receive
@@ -111,6 +110,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     // Go through the hash table to find all tokens 
     for(i = 0; i<HASH_TABLE_SIZE; i++)
     {
+        
         dummyToken = hashArray[i];
         if(dummyToken != NULL)
         {
@@ -118,7 +118,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
             consec = dummyToken->consec;
             tokenId = dummyToken->key;
             is_detect = is_detect_cycle(dummyToken);
-            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
+            printf("NODE %d CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", dummyToken->key, curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
@@ -137,6 +137,8 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 0;
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
+                    dummyToken->detect_to_absent_ts = absent_timestamp_s;
+                    printf("Node has been present for --- %d\n", dummyToken->detect_to_absent_ts - dummyToken->absent_to_detect_ts);
         		}
         	}
         	/* Absent mode */
@@ -156,6 +158,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 1;
         			printf("%i DETECT %i\n", detect_timestamp_s, tokenId);
+                    dummyToken->absent_to_detect_ts = detect_timestamp_s;
         		}
         	}
             else
@@ -179,7 +182,7 @@ void process_cycle()
     int curr_timestamp_s;
 
     curr_timestamp_s = clock_time()/CLOCK_SECOND;
-    printf("New cycle begins. Previous cycle lasted for: %i\n", curr_timestamp_s - cycle_start_timestamp_s);
+    // printf("New cycle begins. Previous cycle lasted for: %i\n", curr_timestamp_s - cycle_start_timestamp_s);
     count_consec(curr_timestamp_s, cycle_start_timestamp_s);
     cycle_start_timestamp_s = curr_timestamp_s;
 }
@@ -190,7 +193,7 @@ Collects the RSSI when packet is received
 static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
 	// Data packet struct
-	printf("RECEIVING\n");
+	// printf("RECEIVING\n");
 	memcpy(&received_packet, packetbuf_dataptr(), sizeof(data_packet_struct));
 	curr_timestamp = clock_time();
 
@@ -199,18 +202,18 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     // First entry of token
 	if (dummyToken == NULL)
     {
-        dummyToken = insert(received_packet.src_id,0,0,0,0);
+        dummyToken = insert(tmp, received_packet.src_id,0,0,0,0);
     }
     dummyToken->rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
     dummyToken->rssi_count += 1;
 
-	printf(
-		"Timestamp: %3lu.%03lu Received packet from node id: %lu RSSI: %d\n", 
-		curr_timestamp / CLOCK_SECOND, 
-		((curr_timestamp % CLOCK_SECOND)*1000) / CLOCK_SECOND, 
-		received_packet.src_id, 
-		(signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI)
-		);
+	// printf(
+	// 	"Timestamp: %3lu.%03lu Received packet from node id: %lu RSSI: %d\n", 
+	// 	curr_timestamp / CLOCK_SECOND, 
+	// 	((curr_timestamp % CLOCK_SECOND)*1000) / CLOCK_SECOND, 
+	// 	received_packet.src_id, 
+	// 	(signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI)
+	// 	);
 }
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
@@ -287,11 +290,11 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             If the time slot is to send,
             The curr_pos will correspond with the send index pointed at an element in the active slot buffer.
         */
-        printf("|----- send_slot = %d, curr_slot = %d -----|\n", send_arr[send_index], curr_pos);
+        // printf("|----- send_slot = %d, curr_slot = %d -----|\n", send_arr[send_index], curr_pos);
         /* Awake mode */
         if (send_arr[send_index] == curr_pos)
         {
-            printf("SENDING\n");
+            // printf("SENDING\n");
 
             // radio on
             NETSTACK_RADIO.on();
@@ -318,7 +321,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
         /* Sleep mode */
         else
         {
-            printf("SLEEPING\n");
+            // printf("SLEEPING\n");
 
             // radio off
             NETSTACK_RADIO.off();
@@ -336,7 +339,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             {
                 NumSleep = TOTAL_SLOTS_LEN + send_arr[send_index] - curr_pos;
             }
-            printf("Sleep for %d slots \n", NumSleep);
+            // printf("Sleep for %d slots \n", NumSleep);
 
             // NumSleep should be a constant or static int
             for (i = 0; i < NumSleep; i++)
