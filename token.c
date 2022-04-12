@@ -23,9 +23,7 @@ unsigned long curr_timestamp;
 /*---------------------------------------------------------------------------*/
 // Factor is scaled by 1000. Inverse of the desired slot period, 
 // which is 10s / total number of slots give by n^2
-static long BEACON_INTERVAL_FREQ_SCALED = TOTAL_SLOTS_LEN  * 1000 / LATENCY_BOUND_S;
-#define WAKE_TIME RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
-#define SLEEP_SLOT RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
+
 /*---------------------------------------------------------------------------*/
 static int send_arr[SEND_ARR_LEN];
 static int send_index = 0;
@@ -45,6 +43,36 @@ AUTOSTART_PROCESSES(&cc2650_nbr_discovery_process);
 /*---------------------------------------------------------------------------*/
 struct TokenData* dummyToken;
 /*---------------------------------------------------------------------------*/
+MEMB(tmp, struct TokenData, 5);
+/*---------------------------------------------------------------------------*/
+
+/*
+    Mesures distance
+*/
+void 
+print_float(float val) {
+    printf("%d.", (int)val);
+    printf("%d", (int)(val*10)%10);
+    printf("%d", (int)(val*100)%10);
+    printf("%d", (int)(val*1000)%10);
+}
+
+/* 
+    Returns whether the transmitting node is within 3m away by RSSI estimation. 
+*/
+int
+is_distance_within_3m(signed short rssi) {
+    // Estimate distance
+    int numerator = MEASURED_POWER - rssi;
+    float exp = (float) numerator / ENVIRON_FACTOR;
+    float dist = powf(10, exp);
+    printf("Estimated distance: ");
+    print_float(dist);
+    printf("\n");
+
+    // Check if distance is within error margin
+    return dist + ERROR_MARGIN < DISTANCE_THRESHOLD || dist - ERROR_MARGIN < DISTANCE_THRESHOLD;
+}
 
 /*
 Helper function.
@@ -62,10 +90,8 @@ int is_detect_cycle(struct TokenData* dummyToken)
     }
     else
     {
-        ave_rssi = dummyToken->rssi_sum / dummyToken->rssi_count;
-        printf("Ave RSSI %i\n", ave_rssi);
-        // Ave RSSI values indicates detect < 3m
-        return ave_rssi > RSSI_THRESHOLD_3M;
+        ave_rssi = dummyToken->rssi_sum/dummyToken->rssi_count;
+        return is_distance_within_3m(ave_rssi);
     }
 }
 
@@ -104,7 +130,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         		{
         			absent_timestamp_s = start_timestamp_s;
         		}
-        		else if (consec == DETECT_TO_ABSENT)
+        		else if (consec == DETECT_TO_ABSENT_S / UNIT_CYCLE_TIME_S)
         		{
                     printf("|----- Changing from detect to absent -----|\n");
         			// Need to change state
@@ -123,7 +149,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         		{
         			detect_timestamp_s = start_timestamp_s;
         		}
-        		else if (consec == ABSENT_TO_DETECT)
+        		else if (consec == ABSENT_TO_DETECT_S / UNIT_CYCLE_TIME_S)
         		{
                     printf("|----- Changing from absent to detect -----|\n");
         			// Need to change state
