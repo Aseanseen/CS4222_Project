@@ -19,7 +19,7 @@ struct TokenData {
 };
 
 struct TokenData* hashArray[HASH_TABLE_SIZE];
-struct TokenData* dummyToken;
+struct TokenData* _dummyToken;
 
 int hashCode(int key) {
    return key % HASH_TABLE_SIZE;
@@ -80,7 +80,7 @@ struct TokenData* delete(struct TokenData* item){
       if(hashArray[hashIndex]->key == key){
          struct TokenData* temp = hashArray[hashIndex];
          //assign a dummy item at deleted position
-         hashArray[hashIndex] = dummyToken;
+         hashArray[hashIndex] = _dummyToken;
          return temp;
       }
       //go to next cell
