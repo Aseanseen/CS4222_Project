@@ -1,6 +1,7 @@
 #include "contiki.h"
 #include "dev/leds.h"
 #include <stdio.h>
+#include <stdbool.h>
 #include "core/net/rime/rime.h"
 #include "dev/serial-line.h"
 #include "dev/uart1.h"
