@@ -19,7 +19,6 @@ struct TokenData {
 };
 
 struct TokenData* hashArray[HASH_TABLE_SIZE];
-struct TokenData* _dummyToken = NULL;
 
 int hashCode(int key) {
    return key % HASH_TABLE_SIZE;
