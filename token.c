@@ -111,6 +111,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     int tokenId;
     int count = 0;
     // Go through the hash table to find all tokens 
+    printf("\n\n----------------------------------");
     for(i = 0; i<HASH_TABLE_SIZE; i++)
     {
         
@@ -121,7 +122,8 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
             state_flag = dummyToken->state_flag;
             consec = dummyToken->consec;
             tokenId = dummyToken->key;
-            is_detect = is_detect_cycle(dummyToken);
+            is_detect = is_detect_cycle(    dummyToken);
+
             printf("NODE %d CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", dummyToken->key, curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
         	/* Detect mode */
