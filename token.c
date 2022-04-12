@@ -43,7 +43,7 @@ AUTOSTART_PROCESSES(&cc2650_nbr_discovery_process);
 /*---------------------------------------------------------------------------*/
 struct TokenData* dummyToken;
 /*---------------------------------------------------------------------------*/
-MEMB(tmp, struct TokenData, 5);
+MEMB(tmp, struct TokenData, HASH_TABLE_SIZE);
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -63,6 +63,7 @@ print_float(float val) {
 int
 is_distance_within_3m(signed short rssi) {
     // Estimate distance
+    printf("RSSI: %d\n", rssi);
     int numerator = MEASURED_POWER - rssi;
     float exp = (float) numerator / ENVIRON_FACTOR;
     float dist = powf(10, exp);
@@ -108,17 +109,21 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     int consec;
     int state_flag;
     int tokenId;
+    int count = 0;
     // Go through the hash table to find all tokens 
+    printf("\n\n----------------------------------");
     for(i = 0; i<HASH_TABLE_SIZE; i++)
     {
         
         dummyToken = hashArray[i];
         if(dummyToken != NULL)
         {
+            count++;
             state_flag = dummyToken->state_flag;
             consec = dummyToken->consec;
             tokenId = dummyToken->key;
-            is_detect = is_detect_cycle(dummyToken);
+            is_detect = is_detect_cycle(    dummyToken);
+
             printf("NODE %d CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", dummyToken->key, curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
         	/* Detect mode */
@@ -140,7 +145,6 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
                     dummyToken->detect_to_absent_ts = absent_timestamp_s;
                     printf("Node has been present for --- %d\n", dummyToken->detect_to_absent_ts - dummyToken->absent_to_detect_ts);
-                    delete(dummyToken);
         		}
         	}
         	/* Absent mode */
@@ -167,12 +171,19 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
             {
                 consec = 0;
             }
+
+            if (!(consec || state_flag || is_detect)) {
+                delete(dummyToken);
+            }
+
             dummyToken->consec = consec;
             dummyToken->state_flag = state_flag;
             dummyToken->rssi_sum = 0;
             dummyToken->rssi_count = 0;
         }
     }
+    printf("count: %d\n", count);
+    count = 0;
 }
 
 /*
