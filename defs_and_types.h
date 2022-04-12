@@ -19,6 +19,7 @@ struct TokenData {
 };
 
 struct TokenData* hashArray[HASH_TABLE_SIZE];
+struct TokenData* _dummyToken;
 
 int hashCode(int key) {
    return key % HASH_TABLE_SIZE;
@@ -68,5 +69,25 @@ struct TokenData *insert(struct memb tmp, int key,signed short rssi_sum,int rssi
 	
    hashArray[hashIndex] = item;
    return item;
+}
+
+struct TokenData* delete(struct TokenData* item){
+   int key = item->key;
+   //get the hash
+   int hashIndex = hashCode(key);
+   //move in array until an empty
+   while(hashArray[hashIndex] != NULL){
+      if(hashArray[hashIndex]->key == key){
+         struct TokenData* temp = hashArray[hashIndex];
+         //assign a dummy item at deleted position
+         hashArray[hashIndex] = _dummyToken;
+         return temp;
+      }
+      //go to next cell
+      ++hashIndex;
+      //wrap around the table
+      hashIndex %= HASH_TABLE_SIZE;
+   }
+   return NULL;
 }
 /*---------------------------------------------------------------------------*/
