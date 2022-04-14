@@ -42,10 +42,6 @@ static data_packet_struct received_packet;
 static data_packet_struct data_packet;
 unsigned long curr_timestamp;
 /*---------------------------------------------------------------------------*/
-// Factor is scaled by 1000. Inverse of the desired slot period, 
-// which is 10s / total number of slots give by n^2
-
-/*---------------------------------------------------------------------------*/
 static int send_arr[SEND_ARR_LEN];
 static int send_index = 0;
 static int curr_pos = 0;
@@ -134,12 +130,9 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     // Go through the hash table to find all tokens 
     for(i = 0; i<ARR_MAX_LEN; i++)
     {
-        
-        _dummyToken = tokenDataList.tk[i];
-        
+        _dummyToken = tokenDataList.tk[i];   
         if(_dummyToken->key != -1)
         {
-            // map_view(&tokenDataList);
             state_flag = _dummyToken->state_flag;
             consec = _dummyToken->consec;
             tokenId = _dummyToken->key;
