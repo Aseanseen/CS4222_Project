@@ -23,7 +23,7 @@ struct TokenData
 void print_token_data(struct TokenData *token)
 {
    printf(
-       "%d - %d - %d - %d - %d - %d\n",
+       "%d - %d - %d - %d - %d - %d - %d\n",
        token->key,
        token->rssi_sum,
        token->rssi_count,
