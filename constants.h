@@ -6,7 +6,7 @@
 #define UNIT_CYCLE_TIME_S                   1
 
 /* Quantity is varied to choose the minimal power consumption. */
-#define N 3
+#define N 2
 #define TOTAL_SLOTS_LEN N * N
 #define SEND_ARR_LEN 2 * N - 1
 #define NUM_SEND 2

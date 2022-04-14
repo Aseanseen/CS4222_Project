@@ -42,8 +42,9 @@ PROCESS(cc2650_nbr_discovery_process, "cc2650 neighbour discovery process");
 AUTOSTART_PROCESSES(&cc2650_nbr_discovery_process);
 /*---------------------------------------------------------------------------*/
 struct TokenData* dummyToken;
+struct TokenDataList tokenDataList= {.max_size = ARR_MAX_LEN, .num_elem = 0};
 /*---------------------------------------------------------------------------*/
-MEMB(tmp, struct TokenData, HASH_TABLE_SIZE);
+MEMB(tmp, struct TokenData, ARR_MAX_LEN);
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -102,29 +103,31 @@ Checks the state of all tokens in the hash table then counts the respective cons
 Absent 0: If consec increases to 15 then state changes to detect. Prints "Timestamp (in seconds) DETECT nodeID".
 Detect 1: If consec increases to 30 then state changes to absent. Prints "Timestamp (in seconds) ABSENT nodeID".
 */
-static void count_consec(int curr_timestamp_s, int start_timestamp_s)
+static void count_consec(int curr_timestamp_s, int start_timestamp_s)   
 {
     int i;
     int is_detect;
     int consec;
     int state_flag;
     int tokenId;
-    int count = 0;
+    struct TokenData* _dummyToken;
     // Go through the hash table to find all tokens 
-    printf("\n\n----------------------------------");
-    for(i = 0; i<HASH_TABLE_SIZE; i++)
+    printf("\n----------------------------------\n");
+    
+    for(i = 0; i<ARR_MAX_LEN; i++)
     {
         
-        dummyToken = hashArray[i];
-        if(dummyToken != NULL)
+        _dummyToken = tokenDataList.tk[i];
+        
+        if(_dummyToken->key != -1)
         {
-            count++;
-            state_flag = dummyToken->state_flag;
-            consec = dummyToken->consec;
-            tokenId = dummyToken->key;
-            is_detect = is_detect_cycle(    dummyToken);
-
-            printf("NODE %d CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", dummyToken->key, curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
+            map_view(&tokenDataList);
+            state_flag = _dummyToken->state_flag;
+            consec = _dummyToken->consec;
+            tokenId = _dummyToken->key;
+            is_detect = is_detect_cycle(_dummyToken);
+            printf("NODE %d ", _dummyToken->key);
+            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
@@ -143,8 +146,8 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 0;
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
-                    dummyToken->detect_to_absent_ts = absent_timestamp_s;
-                    printf("Node has been present for --- %d\n", dummyToken->detect_to_absent_ts - dummyToken->absent_to_detect_ts);
+                    _dummyToken->detect_to_absent_ts = absent_timestamp_s;
+                    printf("Node has been present for --- %d\n", _dummyToken->detect_to_absent_ts - _dummyToken->absent_to_detect_ts);
         		}
         	}
         	/* Absent mode */
@@ -164,26 +167,26 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         			consec = 0;
         			state_flag = 1;
         			printf("%i DETECT %i\n", detect_timestamp_s, tokenId);
-                    dummyToken->absent_to_detect_ts = detect_timestamp_s;
+                    _dummyToken->absent_to_detect_ts = detect_timestamp_s;
         		}
         	}
             else
             {
                 consec = 0;
             }
+            // printf("NODE %d", _dummyToken->key);
+            printf(">>> CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
             if (!(consec || state_flag || is_detect)) {
-                delete(dummyToken);
+                map_remove(&tokenDataList, _dummyToken);
             }
 
-            dummyToken->consec = consec;
-            dummyToken->state_flag = state_flag;
-            dummyToken->rssi_sum = 0;
-            dummyToken->rssi_count = 0;
+            _dummyToken->consec = consec;
+            _dummyToken->state_flag = state_flag;
+            _dummyToken->rssi_sum = 0;
+            _dummyToken->rssi_count = 0;
         }
     }
-    printf("count: %d\n", count);
-    count = 0;
 }
 
 /*
@@ -211,22 +214,29 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 	curr_timestamp = clock_time();
 
     // Find the token in hash table
-    dummyToken = search(received_packet.src_id);
+    dummyToken = map_search(&tokenDataList, received_packet.src_id);
+
     // First entry of token
 	if (dummyToken == NULL)
     {
-        dummyToken = insert(tmp, received_packet.src_id,0,0,0,0);
-    }
+        struct TokenData insertToken = {
+            .key = received_packet.src_id,
+            .rssi_sum = 0,
+            .rssi_count = 0,
+            .consec = 0,
+            .state_flag = 0,
+            .absent_to_detect_ts = 0,
+            .detect_to_absent_ts = 0
+        };
+
+        map_insert(&tokenDataList, &insertToken);
+    } 
     dummyToken->rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
     dummyToken->rssi_count += 1;
 
-	// printf(
-	// 	"Timestamp: %3lu.%03lu Received packet from node id: %lu RSSI: %d\n", 
-	// 	curr_timestamp / CLOCK_SECOND, 
-	// 	((curr_timestamp % CLOCK_SECOND)*1000) / CLOCK_SECOND, 
-	// 	received_packet.src_id, 
-	// 	(signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI)
-	// 	);
+	// printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+    // map_view(&tokenDataList);
+    // printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
 }
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
@@ -436,6 +446,9 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
         Max Time s: %d\n\
     ", row_num, col_num, WAKE_TIME, SLEEP_SLOT, s, ms1, ms2, ms3, N, TOTAL_SLOTS_LEN, LATENCY_BOUND_S);
 
+
+    map_init(tmp, &tokenDataList);
+    
     // Start sender in one millisecond.
     rtimer_set(&rt, RTIMER_NOW() + (RTIMER_SECOND / 1000), 1, (rtimer_callback_t)sender_scheduler, NULL);
 
