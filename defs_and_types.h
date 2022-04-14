@@ -65,7 +65,8 @@ void map_insert(struct TokenDataList *tklist, struct TokenData *input)
 
 void map_init(struct memb tmp, struct TokenDataList *tklist)
 {
-   for (int i = 0; i < tklist->max_size; i++)
+   int i;
+   for (i = 0; i < tklist->max_size; i++)
    {
       tklist->tk[i] = memb_alloc(&tmp);
       tklist->tk[i]->key = -1;
@@ -80,7 +81,8 @@ void map_init(struct memb tmp, struct TokenDataList *tklist)
 
 struct TokenData *map_search(struct TokenDataList *tklist, int key)
 {
-   for (int i = 0; i < tklist->max_size; i++)
+   int i;
+   for (i = 0; i < tklist->max_size; i++)
    {
       if (tklist->tk[i]->key == key)
       {
@@ -93,7 +95,8 @@ struct TokenData *map_search(struct TokenDataList *tklist, int key)
 
 void map_remove(struct TokenDataList *tklist, struct TokenData *token)
 {
-   for (int i = 0; i < tklist->max_size; i++)
+   int i;
+   for (i = 0; i < tklist->max_size; i++)
    {
       if (tklist->tk[i]->key == token->key)
       {
@@ -108,8 +111,9 @@ void map_remove(struct TokenDataList *tklist, struct TokenData *token)
 
 void map_view(struct TokenDataList *tklist)
 {
+   int i;
    printf("VIEW ARRAYMAP BEGIN: %d\n", tklist->num_elem);
-   for (int i = 0; i < tklist->max_size; i++)
+   for (i = 0; i < tklist->max_size; i++)
    {
       print_token_data(tklist->tk[i]);
    }
