@@ -8,7 +8,6 @@
 #include "defs_and_types.h"
 #include "net/netstack.h"
 #include "random.h"
-#include "constants.h"
 #include "math.h"
 #ifdef TMOTE_SKY
 #include "powertrace.h"
@@ -19,7 +18,7 @@
 #define UNIT_CYCLE_TIME_S                   1
 
 /* Quantity is varied to choose the minimal power consumption. */
-#define N_VAL 8
+#define N_VAL 3
 #define TOTAL_SLOTS_LEN N_VAL * N_VAL
 #define SEND_ARR_LEN 2 * N_VAL - 1
 #define NUM_SEND 2
