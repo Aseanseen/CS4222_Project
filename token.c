@@ -217,19 +217,9 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     dummyToken = map_search(&tokenDataList, received_packet.src_id);
 
     // First entry of token
-	if (dummyToken == NULL)
+	if (dummyToken->key == -1)
     {
-        struct TokenData insertToken = {
-            .key = received_packet.src_id,
-            .rssi_sum = 0,
-            .rssi_count = 0,
-            .consec = 0,
-            .state_flag = 0,
-            .absent_to_detect_ts = 0,
-            .detect_to_absent_ts = 0
-        };
-
-        map_insert(&tokenDataList, &insertToken);
+        map_insert(&tokenDataList, received_packet.src_id, 0, 0, 0, 0, 0, 0);
     } 
     dummyToken->rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
     dummyToken->rssi_count += 1;
@@ -446,7 +436,7 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
         Max Time s: %d\n\
     ", row_num, col_num, WAKE_TIME, SLEEP_SLOT, s, ms1, ms2, ms3, N, TOTAL_SLOTS_LEN, LATENCY_BOUND_S);
 
-
+    memb_init(&tmp);
     map_init(tmp, &tokenDataList);
     
     // Start sender in one millisecond.
