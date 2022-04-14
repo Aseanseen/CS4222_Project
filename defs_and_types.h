@@ -2,13 +2,15 @@
 
 /*---------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------*/
-typedef struct {
-  unsigned long src_id;
+typedef struct
+{
+   unsigned long src_id;
 } data_packet_struct;
 /*---------------------------------------------------------------------------*/
-#define HASH_TABLE_SIZE 5
+#define ARR_MAX_LEN 5
 
-struct TokenData {
+struct TokenData
+{
    signed short rssi_sum;
    int rssi_count;
    int consec;
@@ -18,120 +20,98 @@ struct TokenData {
    int absent_to_detect_ts;
 };
 
-struct TokenData* hashArray[HASH_TABLE_SIZE];	
+void print_token_data(struct TokenData *token)
+{
+   printf(
+       "%d - %d - %d - %d - %d - %d\n",
+       token->key,
+       token->rssi_sum,
+       token->rssi_count,
+       token->consec,
+       token->state_flag,
+       token->detect_to_absent_ts,
+       token->absent_to_detect_ts);
+}
 
-struct TokenData dummyData = {
-	.rssi_count = 0,
-	.consec = 0,
-	.state_flag = 0,
-	.key = -1,
-	.detect_to_absent_ts = 0,
-	.absent_to_detect_ts = 0
+struct TokenDataList
+{
+   int max_size;
+   struct TokenData *tk[ARR_MAX_LEN];
+   int num_elem;
 };
 
-int hashCode(int key) {
-   return key % HASH_TABLE_SIZE;
-}
-
-struct TokenData *search(int key) {
-   //get the hash 
-   int hashIndex = hashCode(key);  
-	
-   
-   //move in array until an empty 
-   while(hashArray[hashIndex] != NULL ) {
-	
-      if(hashArray[hashIndex]->key == key || hashArray[hashIndex]->key == -1) {
-	printf("SEARCH: hashIndex found %d\n", hashIndex);         
-	return hashArray[hashIndex]; 
-      } 
-			
-      //go to next cell
-      ++hashIndex;
-		
-      //wrap around the table
-      hashIndex %= HASH_TABLE_SIZE;
-   }        
-	
-   return NULL;        
-}
-
-struct TokenData *insert(struct memb tmp, int key,signed short rssi_sum,int rssi_count,int consec,int state_flag) {
-   
-   struct TokenData *item = memb_alloc(&tmp);
-   item->rssi_sum = rssi_sum;
-   item->rssi_count = rssi_count;
-   item->consec = consec;
-   item->state_flag = state_flag;
-   item->key = key;
-   item->detect_to_absent_ts = 0;
-   item->absent_to_detect_ts = 0;
-
-   //get the hash 
-   int hashIndex = hashCode(key);
-
-   //move in array until an empty or deleted cell
-   while(hashArray[hashIndex] != NULL) {
-      //go to next cell
-      ++hashIndex;
-		
-      //wrap around the table
-      hashIndex %= HASH_TABLE_SIZE;
-   }
-
-   printf("INSERT: HashIndex to insert = %d\n", hashIndex);	
-   hashArray[hashIndex] = item;
-
-   return item;
-}
-
-struct TokenData *overwrite(struct TokenData* item, int key, signed short rssi_sum,int rssi_count,int consec,int state_flag) { 
-   item->rssi_sum = rssi_sum;
-   item->rssi_count = rssi_count;
-   item->consec = consec;
-   item->state_flag = state_flag;
-   item->detect_to_absent_ts = 0;
-   item->absent_to_detect_ts = 0;
-   item->key = key;
-   return item;
-}
-
-
-void delete(struct TokenData* item){
-   int key = item->key;
-   //get the hash
-   int hashIndex = hashCode(key);
-   printf("START OF DELETE\n");
-   //move in array until an empty
-   while(hashArray[hashIndex] != NULL){
-      if(hashArray[hashIndex]->key == key){
-	printf("DELETE: deleting HashIndex %d\n", hashIndex);
-         hashArray[hashIndex]->key = -1;
-         printf("END OF DELETE\n");
-	 return;
+void map_insert(struct TokenDataList *tklist, struct TokenData *input)
+{
+   int i = 0;
+   while (tklist->tk[i]->key != -1 && tklist->tk[i]->key != input->key)
+   {
+      i++;
+      if (i == ARR_MAX_LEN)
+      {
+         printf("Not enough space!\n");
+         return;
       }
-      //go to next cell
-      ++hashIndex;
-      //wrap around the table
-      hashIndex %= HASH_TABLE_SIZE;
-	printf("fuck %d - %d\n", key, hashIndex);
-
    }
-   printf("END OF DELETE\n");
+   tklist->tk[i]->key = input->key;
+   tklist->tk[i]->rssi_sum = input->rssi_sum;
+   tklist->tk[i]->rssi_count = input->rssi_count;
+   tklist->tk[i]->consec = input->consec;
+   tklist->tk[i]->state_flag = input->state_flag;
+   tklist->tk[i]->absent_to_detect_ts = input->absent_to_detect_ts;
+   tklist->tk[i]->detect_to_absent_ts = input->detect_to_absent_ts;
+
+   tklist->num_elem++;
+}
+
+void map_init(struct memb tmp, struct TokenDataList *tklist)
+{
+   for (int i = 0; i < tklist->max_size; i++)
+   {
+      tklist->tk[i] = memb_alloc(&tmp);
+      tklist->tk[i]->key = -1;
+      tklist->tk[i]->rssi_sum = 0;
+      tklist->tk[i]->rssi_count = 0;
+      tklist->tk[i]->consec = 0;
+      tklist->tk[i]->state_flag = 0;
+      tklist->tk[i]->absent_to_detect_ts = 0;
+      tklist->tk[i]->detect_to_absent_ts = 0;
+   }
+}
+
+struct TokenData *map_search(struct TokenDataList *tklist, int key)
+{
+   for (int i = 0; i < tklist->max_size; i++)
+   {
+      if (tklist->tk[i]->key == key)
+      {
+         return tklist->tk[i];
+      }
+   }
+   printf("token not found...\n");
+   return NULL;
+}
+
+void map_remove(struct TokenDataList *tklist, struct TokenData *token)
+{
+   for (int i = 0; i < tklist->max_size; i++)
+   {
+      if (tklist->tk[i]->key == token->key)
+      {
+         tklist->tk[i]->key = -1;
+         tklist->num_elem--;
+         return;
+      }
+   }
+   printf("cannot find item\n");
    return;
 }
 
-void display() {
-   int i = 0;
-	
-   for(i = 0; i<HASH_TABLE_SIZE; i++) {
-	
-      if(hashArray[i] != NULL)
-         printf(" (%d)",hashArray[i]->key);
-      else
-         printf(" ~~ ");
+void map_view(struct TokenDataList *tklist)
+{
+   printf("VIEW ARRAYMAP BEGIN: %d\n", tklist->num_elem);
+   for (int i = 0; i < tklist->max_size; i++)
+   {
+      print_token_data(tklist->tk[i]);
    }
-	
-   printf("\n");
+   printf("VIEW ARRAYMAP END\n");
 }
-/*---------------------------------------------------------------------------*/
