@@ -11,6 +11,9 @@
 #include "constants.h"
 #ifdef TMOTE_SKY
 #include "powertrace.h"
+
+#include "board-peripherals.h"
+#include <stdint.h>
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -321,6 +324,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
 
             // radio on
             NETSTACK_RADIO.on();
+
+            // Set Radio transmission power
+            NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
 
             for (i = 0; i < NUM_SEND; i++)
             { // #define NUM_SEND 2 (in defs_and_types.h)

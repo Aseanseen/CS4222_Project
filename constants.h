@@ -16,10 +16,10 @@
 #define WAKE_TIME RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
 #define SLEEP_SLOT RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
 
-#define RSSI_THRESHOLD_3M -45
 #define ENVIRON_FACTOR 22.0 // Free space = 2 (after multiply by 10)
-#define MEASURED_POWER -71
+#define MEASURED_POWER -78
 #define ERROR_MARGIN 0.5 // Error margin of 0.5
+#define TX_POWER -15 // Default: 5; Min: -18
 #define DISTANCE_THRESHOLD 1
 
 #endif
