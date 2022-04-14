@@ -9,10 +9,31 @@
 #include "net/netstack.h"
 #include "random.h"
 #include "constants.h"
+#include "math.h"
 #ifdef TMOTE_SKY
 #include "powertrace.h"
 #endif
+/*---------------------------------------------------------------------------*/
+#define ABSENT_TO_DETECT_S                  15
+#define DETECT_TO_ABSENT_S                  30
+#define UNIT_CYCLE_TIME_S                   1
 
+/* Quantity is varied to choose the minimal power consumption. */
+#define N_VAL 8
+#define TOTAL_SLOTS_LEN N_VAL * N_VAL
+#define SEND_ARR_LEN 2 * N_VAL - 1
+#define NUM_SEND 2
+
+#define LATENCY_BOUND_S UNIT_CYCLE_TIME_S
+#define BEACON_INTERVAL_FREQ_SCALED  (float)(TOTAL_SLOTS_LEN  * 1000 / LATENCY_BOUND_S)
+#define WAKE_TIME RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
+#define SLEEP_SLOT RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
+
+#define RSSI_THRESHOLD_3M -45
+#define ENVIRON_FACTOR 22.0 // Free space = 2 (after multiply by 10)
+#define MEASURED_POWER -71
+#define ERROR_MARGIN 0.5 // Error margin of 0.5
+#define DISTANCE_THRESHOLD 1
 /*---------------------------------------------------------------------------*/
 static struct rtimer rt;
 static struct pt pt;
@@ -84,7 +105,6 @@ int is_detect_cycle(struct TokenData* dummyToken)
 {
     int ave_rssi;
     // did not receive any packet in the cycle
-    // printf("RSSI COUNT %i\n", dummyToken->rssi_count);
     if (dummyToken->rssi_count == 0)
     {
         // did not receive
@@ -112,8 +132,6 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     int tokenId;
     struct TokenData* _dummyToken;
     // Go through the hash table to find all tokens 
-    printf("\n----------------------------------\n");
-    
     for(i = 0; i<ARR_MAX_LEN; i++)
     {
         
@@ -121,7 +139,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         
         if(_dummyToken->key != -1)
         {
-            map_view(&tokenDataList);
+            // map_view(&tokenDataList);
             state_flag = _dummyToken->state_flag;
             consec = _dummyToken->consec;
             tokenId = _dummyToken->key;
@@ -141,13 +159,11 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         		}
         		else if (consec == DETECT_TO_ABSENT_S / UNIT_CYCLE_TIME_S)
         		{
-                    printf("|----- Changing from detect to absent -----|\n");
         			// Need to change state
         			consec = 0;
         			state_flag = 0;
         			printf("%i ABSENT %i\n", absent_timestamp_s, tokenId);
                     _dummyToken->detect_to_absent_ts = absent_timestamp_s;
-                    printf("Node has been present for --- %d\n", _dummyToken->detect_to_absent_ts - _dummyToken->absent_to_detect_ts);
         		}
         	}
         	/* Absent mode */
@@ -162,7 +178,6 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
         		}
         		else if (consec == ABSENT_TO_DETECT_S / UNIT_CYCLE_TIME_S)
         		{
-                    printf("|----- Changing from absent to detect -----|\n");
         			// Need to change state
         			consec = 0;
         			state_flag = 1;
@@ -174,7 +189,6 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
             {
                 consec = 0;
             }
-            // printf("NODE %d", _dummyToken->key);
             printf(">>> CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
             if (!(consec || state_flag || is_detect)) {
@@ -198,7 +212,6 @@ void process_cycle()
     int curr_timestamp_s;
 
     curr_timestamp_s = clock_time()/CLOCK_SECOND;
-    // printf("New cycle begins. Previous cycle lasted for: %i\n", curr_timestamp_s - cycle_start_timestamp_s);
     count_consec(curr_timestamp_s, cycle_start_timestamp_s);
     cycle_start_timestamp_s = curr_timestamp_s;
 }
@@ -209,7 +222,6 @@ Collects the RSSI when packet is received
 static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
 {
 	// Data packet struct
-	// printf("RECEIVING\n");
 	memcpy(&received_packet, packetbuf_dataptr(), sizeof(data_packet_struct));
 	curr_timestamp = clock_time();
 
@@ -223,10 +235,6 @@ static void broadcast_recv(struct broadcast_conn *c, const linkaddr_t *from)
     } 
     dummyToken->rssi_sum += (signed short)packetbuf_attr(PACKETBUF_ATTR_RSSI);
     dummyToken->rssi_count += 1;
-
-	// printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
-    // map_view(&tokenDataList);
-    // printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
 }
 
 static const struct broadcast_callbacks broadcast_call = {broadcast_recv};
@@ -258,17 +266,17 @@ void set_active_slots(int *buf, int row_num, int col_num)
     int temp = 0, insert_index = 0;
     int j;
 
-    int rotation_num = N * row_num + col_num;
-    for (j = 0; j < N; j++)
+    int rotation_num = N_VAL * row_num + col_num;
+    for (j = 0; j < N_VAL; j++)
     {
-        temp = col_num + N * j;
+        temp = col_num + N_VAL * j;
         if (temp < rotation_num)
         {
             buf[j] = temp;
         }
         else if (temp > rotation_num)
         {
-            buf[j + N - 1] = temp;
+            buf[j + N_VAL - 1] = temp;
         }
         else
         {
@@ -276,9 +284,9 @@ void set_active_slots(int *buf, int row_num, int col_num)
         }
     }
 
-    for (j = 0; j < N; j++)
+    for (j = 0; j < N_VAL; j++)
     {
-        temp = row_num * N + j;
+        temp = row_num * N_VAL + j;
         buf[insert_index + j] = temp;
     }
 }
@@ -292,8 +300,6 @@ char sender_scheduler(struct rtimer *t, void *ptr)
     static int NumSleep = 0;
     PT_BEGIN(&pt);
 
-    // printf("Start clock %lu ticks, timestamp %3lu.%03lu\n", curr_timestamp, curr_timestamp / CLOCK_SECOND, ((curr_timestamp % CLOCK_SECOND) * 1000) / CLOCK_SECOND);
-
     while (1)
     {
         /* 
@@ -303,12 +309,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             If the time slot is to send,
             The curr_pos will correspond with the send index pointed at an element in the active slot buffer.
         */
-        // printf("|----- send_slot = %d, curr_slot = %d -----|\n", send_arr[send_index], curr_pos);
         /* Awake mode */
         if (send_arr[send_index] == curr_pos)
         {
-            // printf("SENDING\n");
-
             // radio on
             NETSTACK_RADIO.on();
 
@@ -334,8 +337,6 @@ char sender_scheduler(struct rtimer *t, void *ptr)
         /* Sleep mode */
         else
         {
-            // printf("SLEEPING\n");
-
             // radio off
             NETSTACK_RADIO.off();
 
@@ -352,7 +353,6 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             {
                 NumSleep = TOTAL_SLOTS_LEN + send_arr[send_index] - curr_pos;
             }
-            // printf("Sleep for %d slots \n", NumSleep);
 
             // NumSleep should be a constant or static int
             for (i = 0; i < NumSleep; i++)
@@ -392,9 +392,6 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     serial_line_init();
 	#endif
 
-    printf("CC2650 neighbour discovery\n");
-    printf("Node %d will be sending packet of size %d Bytes\n", node_id, (int)sizeof(data_packet_struct));
-
     // radio off
     NETSTACK_RADIO.off();
 
@@ -404,19 +401,10 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     // Choose slots to be active
     // We choose row_num and col_num randomly at the beginning of runtime
     // And generate the slots in arr [0, n*n-1] to be active.
-    int row_num = random_rand() % N;
-    int col_num = random_rand() % N;
+    int row_num = random_rand() % N_VAL;
+    int col_num = random_rand() % N_VAL;
 
     set_active_slots(send_arr, row_num, col_num);
-
-    // Prints the slots whereby the device will be active.
-    printf("Send Arr: ");
-    int i;
-    for (i = 0; i < SEND_ARR_LEN; i++)
-    {
-        printf("%d ", send_arr[i]);
-    }
-    printf("\n");
 
     // Prints parameter data.
     long time = 1000 * 1000 / BEACON_INTERVAL_FREQ_SCALED;
@@ -431,10 +419,10 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
         Wake time: %ld\n\
         Sleep slot: %ld\n\
         Beacon Interval Period: %d.%d%d%ds\n\
-        N: %d\n\
+        N_VAL: %d\n\
         Total Slots Len: %d\n\
         Max Time s: %d\n\
-    ", row_num, col_num, WAKE_TIME, SLEEP_SLOT, s, ms1, ms2, ms3, N, TOTAL_SLOTS_LEN, LATENCY_BOUND_S);
+    ", row_num, col_num, WAKE_TIME, SLEEP_SLOT, s, ms1, ms2, ms3, N_VAL, TOTAL_SLOTS_LEN, LATENCY_BOUND_S);
 
     memb_init(&tmp);
     map_init(tmp, &tokenDataList);
