@@ -20,10 +20,12 @@ struct TokenData
    int absent_to_detect_ts;
 };
 
+struct TokenData nullToken = {0,0,0,0,-1,0,0};
+
 void print_token_data(struct TokenData *token)
 {
    printf(
-       "%d - %d - %d - %d - %d - %d\n",
+       "%d - %d - %d - %d - %d - %d - %d\n",
        token->key,
        token->rssi_sum,
        token->rssi_count,
@@ -40,10 +42,10 @@ struct TokenDataList
    int num_elem;
 };
 
-void map_insert(struct TokenDataList *tklist, struct TokenData *input)
+void map_insert(struct TokenDataList *tklist, int key, int rssi_sum, int rssi_count, int consec, int state_flag, int absent_to_detect_ts, int detect_to_absent_ts)
 {
    int i = 0;
-   while (tklist->tk[i]->key != -1 && tklist->tk[i]->key != input->key)
+   while (tklist->tk[i]->key != -1 && tklist->tk[i]->key != key)
    {
       i++;
       if (i == ARR_MAX_LEN)
@@ -52,20 +54,21 @@ void map_insert(struct TokenDataList *tklist, struct TokenData *input)
          return;
       }
    }
-   tklist->tk[i]->key = input->key;
-   tklist->tk[i]->rssi_sum = input->rssi_sum;
-   tklist->tk[i]->rssi_count = input->rssi_count;
-   tklist->tk[i]->consec = input->consec;
-   tklist->tk[i]->state_flag = input->state_flag;
-   tklist->tk[i]->absent_to_detect_ts = input->absent_to_detect_ts;
-   tklist->tk[i]->detect_to_absent_ts = input->detect_to_absent_ts;
+   tklist->tk[i]->key = key;
+   tklist->tk[i]->rssi_sum = rssi_sum;
+   tklist->tk[i]->rssi_count = rssi_count;
+   tklist->tk[i]->consec = consec;
+   tklist->tk[i]->state_flag = state_flag;
+   tklist->tk[i]->absent_to_detect_ts = absent_to_detect_ts;
+   tklist->tk[i]->detect_to_absent_ts = detect_to_absent_ts;
 
    tklist->num_elem++;
 }
 
 void map_init(struct memb tmp, struct TokenDataList *tklist)
 {
-   for (int i = 0; i < tklist->max_size; i++)
+   int i;
+   for (i = 0; i < tklist->max_size; i++)
    {
       tklist->tk[i] = memb_alloc(&tmp);
       tklist->tk[i]->key = -1;
@@ -76,11 +79,13 @@ void map_init(struct memb tmp, struct TokenDataList *tklist)
       tklist->tk[i]->absent_to_detect_ts = 0;
       tklist->tk[i]->detect_to_absent_ts = 0;
    }
+   printf("init done\n");
 }
 
 struct TokenData *map_search(struct TokenDataList *tklist, int key)
 {
-   for (int i = 0; i < tklist->max_size; i++)
+   int i;
+   for (i = 0; i < tklist->max_size; i++)
    {
       if (tklist->tk[i]->key == key)
       {
@@ -88,12 +93,13 @@ struct TokenData *map_search(struct TokenDataList *tklist, int key)
       }
    }
    printf("token not found...\n");
-   return NULL;
+   return &nullToken;
 }
 
 void map_remove(struct TokenDataList *tklist, struct TokenData *token)
 {
-   for (int i = 0; i < tklist->max_size; i++)
+   int i;
+   for (i = 0; i < tklist->max_size; i++)
    {
       if (tklist->tk[i]->key == token->key)
       {
@@ -108,8 +114,9 @@ void map_remove(struct TokenDataList *tklist, struct TokenData *token)
 
 void map_view(struct TokenDataList *tklist)
 {
+   int i;
    printf("VIEW ARRAYMAP BEGIN: %d\n", tklist->num_elem);
-   for (int i = 0; i < tklist->max_size; i++)
+   for (i = 0; i < tklist->max_size; i++)
    {
       print_token_data(tklist->tk[i]);
    }
