@@ -32,13 +32,13 @@
 
 #define ENVIRON_FACTOR_IN 22.0 // Free space = 2 (after multiply by 10)
 #define MEASURED_POWER_IN -78
-#define ENVIRON_FACTOR_OUT 20.0 // Free space = 2 (after multiply by 10)
+#define ENVIRON_FACTOR_OUT 22.0 // Free space = 2 (after multiply by 10)
 #define MEASURED_POWER_OUT -70
 #define ERROR_MARGIN 0.5 // Error margin of 0.5
 #define TX_POWER -15 // Default: 5, Min: -18
-#define DISTANCE_THRESHOLD 1
+#define DISTANCE_THRESHOLD 3
 
-#define LUX_THRESHOLD 3000 // LUX threshold to determine outdoor/indoor 
+#define LUX_THRESHOLD 1200 // LUX threshold to determine outdoor/indoor 
 /*---------------------------------------------------------------------------*/
 static struct rtimer rt;
 static struct pt pt;
@@ -71,7 +71,7 @@ MEMB(tmp, struct TokenData, ARR_MAX_LEN);
 /*---------------------------------------------------------------------------*/
 
 /*
-    Mesures distance
+    Prints float variables
 */
 void 
 print_float(float val) {
@@ -89,18 +89,13 @@ print_float(float val) {
 */
 int
 is_outdoor(){
-    // Print for analysis
     int value;
     int rtr_val = 0;
     
     value = opt_3001_sensor.value(0);
     if(value != CC26XX_SENSOR_READING_ERROR) {
-        printf("OPT: Light=%d.%02d lux\n", value / 100, value % 100);
-
         // Check if LUX over threshold
         if ((value / 100) >= LUX_THRESHOLD) rtr_val = 1;
-    } else {
-        printf("OPT: Light Sensor's Warming Up\n\n");
     }
 
     SENSORS_ACTIVATE(opt_3001_sensor);
@@ -125,7 +120,7 @@ is_distance_within_3m(signed short rssi) {
         // Outdoor environment
         int numerator = MEASURED_POWER_OUT - rssi;
         float exp = (float) numerator / ENVIRON_FACTOR_OUT;
-        float dist = powf(10, exp);
+        dist = powf(10, exp);
     }
     
     printf("Estimated distance: ");
@@ -167,9 +162,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     
     // Check light setting
     environment = is_outdoor();
-    if (environment == 0) printf("Sensor is IN\n");
-    else printf("Sensor is OUT\n");
-
+    
     int i;
     int is_detect;
     int consec;
