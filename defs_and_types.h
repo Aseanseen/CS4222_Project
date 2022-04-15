@@ -50,7 +50,7 @@ void map_insert(struct TokenDataList *tklist, int key, int rssi_sum, int rssi_co
       i++;
       if (i == ARR_MAX_LEN)
       {
-         printf("Not enough space!\n");
+         //printf("Not enough space!\n");
          return;
       }
    }
@@ -79,7 +79,7 @@ void map_init(struct memb tmp, struct TokenDataList *tklist)
       tklist->tk[i]->absent_to_detect_ts = 0;
       tklist->tk[i]->detect_to_absent_ts = 0;
    }
-   printf("init done\n");
+   //printf("init done\n");
 }
 
 struct TokenData *map_search(struct TokenDataList *tklist, int key)
@@ -92,7 +92,7 @@ struct TokenData *map_search(struct TokenDataList *tklist, int key)
          return tklist->tk[i];
       }
    }
-   printf("token not found...\n");
+   //printf("token not found...\n");
    return &nullToken;
 }
 
@@ -108,7 +108,7 @@ void map_remove(struct TokenDataList *tklist, struct TokenData *token)
          return;
       }
    }
-   printf("cannot find item\n");
+   //printf("cannot find item\n");
    return;
 }
 
