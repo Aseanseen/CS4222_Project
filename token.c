@@ -1,3 +1,5 @@
+#include "board-peripherals.h"
+#include <stdint.h>
 #include "contiki.h"
 #include "dev/leds.h"
 #include <stdio.h>
@@ -11,9 +13,6 @@
 #include "math.h"
 #ifdef TMOTE_SKY
 #include "powertrace.h"
-
-#include "board-peripherals.h"
-#include <stdint.h>
 #endif
 /*---------------------------------------------------------------------------*/
 #define ABSENT_TO_DETECT_S                  15
@@ -66,6 +65,17 @@ struct TokenDataList tokenDataList= {.max_size = ARR_MAX_LEN, .num_elem = 0};
 MEMB(tmp, struct TokenData, ARR_MAX_LEN);
 /*---------------------------------------------------------------------------*/
 
+static void init_opt_reading(void);
+
+/*
+    Turn on light sensor
+*/
+static void
+init_opt_reading(void)
+{
+  SENSORS_ACTIVATE(opt_3001_sensor);
+}
+
 /*
     Mesures distance
 */
@@ -77,6 +87,32 @@ print_float(float val) {
     printf("%d", (int)(val*1000)%10);
 }
 
+
+/*
+    Returns whether the receiver node is indoor or outdoor
+    0 - indoor, 1 - outdoor
+    default to indoor
+*/
+int
+is_outdoor(){
+    // Print for analysis
+    int value;
+    int rtr_val = 0;
+    
+    value = opt_3001_sensor.value(0);
+    if(value != CC26XX_SENSOR_READING_ERROR) {
+        printf("OPT: Light=%d.%02d lux\n", value / 100, value % 100);
+
+        // Check if LUX over threshold
+        if ((value / 100) >= LUX_THRESHOLD) rtr_val = 1;
+    } else {
+        printf("OPT: Light Sensor's Warming Up\n\n");
+    }
+
+    init_opt_reading();
+    return rtr_val;
+}
+
 /* 
     Returns whether the transmitting node is within 3m away by RSSI estimation. 
 */
@@ -84,15 +120,15 @@ int
 is_distance_within_3m(signed short rssi) {
     // Estimate distance
     printf("RSSI: %d\n", rssi);
-    int numerator = MEASURED_POWER - rssi;
-    float exp = (float) numerator / ENVIRON_FACTOR;
+    int numerator = MEASURED_POWER_IN - rssi;
+    float exp = (float) numerator / ENVIRON_FACTOR_IN;
     float dist = powf(10, exp);
     printf("Estimated distance: ");
     print_float(dist);
     printf("\n");
 
     // Check if distance is within error margin
-    return (dist + ERROR_MARGIN) < DISTANCE_THRESHOLD ;
+    return (dist - ERROR_MARGIN) < DISTANCE_THRESHOLD ;
 }
 
 /*
@@ -123,6 +159,12 @@ Detect 1: If consec increases to 30 then state changes to absent. Prints "Timest
 */
 static void count_consec(int curr_timestamp_s, int start_timestamp_s)   
 {
+    
+    // Check light setting
+    int outdoor = is_outdoor();
+    if (outdoor == 0) printf("Sensor is IN\n");
+    else printf("Sensor is OUT\n");
+
     int i;
     int is_detect;
     int consec;
@@ -375,6 +417,8 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
 
     PROCESS_BEGIN();
+
+    init_opt_reading();
 
     random_init(54222);
 
