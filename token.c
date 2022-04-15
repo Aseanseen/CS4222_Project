@@ -30,11 +30,15 @@
 #define WAKE_TIME RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
 #define SLEEP_SLOT RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
 
-#define RSSI_THRESHOLD_3M -45
-#define ENVIRON_FACTOR 22.0 // Free space = 2 (after multiply by 10)
-#define MEASURED_POWER -71
+#define ENVIRON_FACTOR_IN 22.0 // Free space = 2 (after multiply by 10)
+#define MEASURED_POWER_IN -78
+#define ENVIRON_FACTOR_OUT 20.0 // Free space = 2 (after multiply by 10)
+#define MEASURED_POWER_OUT -70
 #define ERROR_MARGIN 0.5 // Error margin of 0.5
+#define TX_POWER -15 // Default: 5, Min: -18
 #define DISTANCE_THRESHOLD 1
+
+#define LUX_THRESHOLD 3000 // LUX threshold to determine outdoor/indoor 
 /*---------------------------------------------------------------------------*/
 static struct rtimer rt;
 static struct pt pt;
@@ -46,6 +50,7 @@ unsigned long curr_timestamp;
 static int send_arr[SEND_ARR_LEN];
 static int send_index = 0;
 static int curr_pos = 0;
+static int environment = 0; // 0 - indoor, 1 - outdoor
 /*---------------------------------------------------------------------------*/
 static int detect_timestamp_s;
 static int absent_timestamp_s;
@@ -64,17 +69,6 @@ struct TokenDataList tokenDataList= {.max_size = ARR_MAX_LEN, .num_elem = 0};
 /*---------------------------------------------------------------------------*/
 MEMB(tmp, struct TokenData, ARR_MAX_LEN);
 /*---------------------------------------------------------------------------*/
-
-static void init_opt_reading(void);
-
-/*
-    Turn on light sensor
-*/
-static void
-init_opt_reading(void)
-{
-  SENSORS_ACTIVATE(opt_3001_sensor);
-}
 
 /*
     Mesures distance
@@ -109,7 +103,7 @@ is_outdoor(){
         printf("OPT: Light Sensor's Warming Up\n\n");
     }
 
-    init_opt_reading();
+    SENSORS_ACTIVATE(opt_3001_sensor);
     return rtr_val;
 }
 
@@ -120,9 +114,20 @@ int
 is_distance_within_3m(signed short rssi) {
     // Estimate distance
     printf("RSSI: %d\n", rssi);
-    int numerator = MEASURED_POWER_IN - rssi;
-    float exp = (float) numerator / ENVIRON_FACTOR_IN;
-    float dist = powf(10, exp);
+
+    float dist = 0;
+    if (environment == 0) {
+        // Indoor environment
+        int numerator = MEASURED_POWER_IN - rssi;
+        float exp = (float) numerator / ENVIRON_FACTOR_IN;
+        dist = powf(10, exp);
+    } else {
+        // Outdoor environment
+        int numerator = MEASURED_POWER_OUT - rssi;
+        float exp = (float) numerator / ENVIRON_FACTOR_OUT;
+        float dist = powf(10, exp);
+    }
+    
     printf("Estimated distance: ");
     print_float(dist);
     printf("\n");
@@ -161,8 +166,8 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
 {
     
     // Check light setting
-    int outdoor = is_outdoor();
-    if (outdoor == 0) printf("Sensor is IN\n");
+    environment = is_outdoor();
+    if (environment == 0) printf("Sensor is IN\n");
     else printf("Sensor is OUT\n");
 
     int i;
@@ -418,7 +423,7 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
 
     PROCESS_BEGIN();
 
-    init_opt_reading();
+    SENSORS_ACTIVATE(opt_3001_sensor);
 
     random_init(54222);
 
