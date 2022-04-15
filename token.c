@@ -1,4 +1,3 @@
-#include "board-peripherals.h"
 #include <stdint.h>
 #include "contiki.h"
 #include "dev/leds.h"
@@ -11,8 +10,22 @@
 #include "net/netstack.h"
 #include "random.h"
 #include "math.h"
-#ifdef TMOTE_SKY
+/*---------------------------------------------------------------------------*/
+#define CC26XX                              0
+#define COOJA                               1
+#define COOJA_LIGHT_VAL                     12000
+/*---------------------------------------------------------------------------*/
+#ifdef BOARD_SENSORTAG
+#include "board-peripherals.h"
+const struct sensors_sensor *sensor = &opt_3001_sensor;
+#define BOARD                               CC26XX
+
+#elif TMOTE_SKY
 #include "powertrace.h"
+#include "dev/light-sensor.h"
+#define CC26XX_SENSOR_READING_ERROR        0x80000000
+#define BOARD                               COOJA
+const struct sensors_sensor *sensor = &light_sensor;
 #endif
 /*---------------------------------------------------------------------------*/
 #define ABSENT_TO_DETECT_S                  15
@@ -20,7 +33,7 @@
 #define UNIT_CYCLE_TIME_S                   1
 
 /* Quantity is varied to choose the minimal power consumption. */
-#define N_VAL 3
+#define N_VAL 8
 #define TOTAL_SLOTS_LEN N_VAL * N_VAL
 #define SEND_ARR_LEN 2 * N_VAL - 1
 #define NUM_SEND 2
@@ -81,7 +94,6 @@ print_float(float val) {
     printf("%d", (int)(val*1000)%10);
 }
 
-
 /*
     Returns whether the receiver node is indoor or outdoor
     0 - indoor, 1 - outdoor
@@ -92,12 +104,20 @@ is_outdoor(){
     int value;
     int rtr_val = 0;
     
-    value = opt_3001_sensor.value(0);
+    if (BOARD == COOJA)
+    {
+        value = COOJA_LIGHT_VAL;
+    }
+    else
+    {
+        value = (*sensor).value(0);        
+    }
+
+    printf("\nLight value: %i\n", value);
     if(value != CC26XX_SENSOR_READING_ERROR) {
         // Check if LUX over threshold
         if ((value / 100) >= LUX_THRESHOLD) rtr_val = 1;
     }
-
     return rtr_val;
 }
 
@@ -161,6 +181,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     
     // Check light setting
     environment = is_outdoor();
+    printf("\nIS OUTDOOR: %i\n", environment);
     
     int i;
     int is_detect;
@@ -370,9 +391,8 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             {
                 process_cycle();
             }
-
+            SENSORS_DEACTIVATE(*sensor);
             // Turn off light sensor
-            SENSORS_DEACTIVATE(opt_3001_sensor);
         }
         /* Sleep mode */
         else
@@ -399,7 +419,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             {
                 // Warm up light sensor 1 slot before wake up
                 if (i == NumSleep - 1) {
-                    SENSORS_ACTIVATE(opt_3001_sensor);
+                    SENSORS_ACTIVATE(*sensor);
                 }
 
                 rtimer_set(t, RTIMER_TIME(t) + SLEEP_SLOT, 1, (rtimer_callback_t)sender_scheduler, ptr);
@@ -422,8 +442,6 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     PROCESS_EXITHANDLER(broadcast_close(&broadcast);)
 
     PROCESS_BEGIN();
-
-    //SENSORS_ACTIVATE(opt_3001_sensor);
 
     random_init(54222);
 
@@ -473,7 +491,6 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
 
     memb_init(&tmp);
     map_init(tmp, &tokenDataList);
-    
     // Start sender in one millisecond.
     rtimer_set(&rt, RTIMER_NOW() + (RTIMER_SECOND / 1000), 1, (rtimer_callback_t)sender_scheduler, NULL);
 
