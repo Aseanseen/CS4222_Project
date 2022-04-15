@@ -468,8 +468,8 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
         Beacon Interval Period: %d.%d%d%ds\n\
         N_VAL: %d\n\
         Total Slots Len: %d\n\
-        Max Time s: %d\n\
-    ", row_num, col_num, WAKE_TIME, SLEEP_SLOT, s, ms1, ms2, ms3, N_VAL, TOTAL_SLOTS_LEN, LATENCY_BOUND_S);
+        Max Time s: %d\n", 
+        row_num, col_num, WAKE_TIME, SLEEP_SLOT, s, ms1, ms2, ms3, N_VAL, TOTAL_SLOTS_LEN, LATENCY_BOUND_S);
 
     memb_init(&tmp);
     map_init(tmp, &tokenDataList);
