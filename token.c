@@ -98,7 +98,6 @@ is_outdoor(){
         if ((value / 100) >= LUX_THRESHOLD) rtr_val = 1;
     }
 
-    SENSORS_ACTIVATE(opt_3001_sensor);
     return rtr_val;
 }
 
@@ -108,7 +107,7 @@ is_outdoor(){
 int
 is_distance_within_3m(signed short rssi) {
     // Estimate distance
-    printf("RSSI: %d\n", rssi);
+    //printf("RSSI: %d\n", rssi);
 
     float dist = 0;
     if (environment == 0) {
@@ -123,9 +122,9 @@ is_distance_within_3m(signed short rssi) {
         dist = powf(10, exp);
     }
     
-    printf("Estimated distance: ");
-    print_float(dist);
-    printf("\n");
+    //printf("Estimated distance: ");
+    //print_float(dist);
+    //printf("\n");
 
     // Check if distance is within error margin
     return (dist - ERROR_MARGIN) < DISTANCE_THRESHOLD ;
@@ -179,8 +178,8 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
             consec = _dummyToken->consec;
             tokenId = _dummyToken->key;
             is_detect = is_detect_cycle(_dummyToken);
-            printf("NODE %d ", _dummyToken->key);
-            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
+            //printf("NODE %d ", _dummyToken->key);
+            //printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
@@ -224,7 +223,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
             {
                 consec = 0;
             }
-            printf(">>> CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
+            //printf(">>> CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, start_timestamp_s, consec, state_flag, is_detect);
 
             if (!(consec || state_flag || is_detect)) {
                 map_remove(&tokenDataList, _dummyToken);
@@ -371,6 +370,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             {
                 process_cycle();
             }
+
+            // Turn off light sensor
+            SENSORS_DEACTIVATE(opt_3001_sensor);
         }
         /* Sleep mode */
         else
@@ -395,6 +397,11 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             // NumSleep should be a constant or static int
             for (i = 0; i < NumSleep; i++)
             {
+                // Warm up light sensor 1 slot before wake up
+                if (i == NumSleep - 1) {
+                    SENSORS_ACTIVATE(opt_3001_sensor);
+                }
+
                 rtimer_set(t, RTIMER_TIME(t) + SLEEP_SLOT, 1, (rtimer_callback_t)sender_scheduler, ptr);
                 PT_YIELD(&pt);
                 // Increment curr pos for every sleep slot
@@ -416,7 +423,7 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
 
     PROCESS_BEGIN();
 
-    SENSORS_ACTIVATE(opt_3001_sensor);
+    //SENSORS_ACTIVATE(opt_3001_sensor);
 
     random_init(54222);
 
