@@ -494,7 +494,7 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     BEACON_INTERVAL_FREQ_SCALED = 1 / BEACON_INTERVAL_FREQ_SCALED;
     WAKE_TIME = RTIMER_SECOND * BEACON_INTERVAL_PERIOD_SCALED;
     SLEEP_SLOT = RTIMER_SECOND * BEACON_INTERVAL_PERIOD_SCALED;
-    min_light_t = (int)(MIN_WARM_UP_TIME_S / ((float)BEACON_INTERVAL_PERIOD_SCALED / 1000)) + 1;  // Min number of slots to warm up light sensor.
+    min_light_t = (int)(MIN_WARM_UP_TIME_S / ((float)BEACON_INTERVAL_PERIOD_SCALED)) + 1;  // Min number of slots to warm up light sensor.
 
     // Prints parameter data.
     
@@ -507,8 +507,9 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     Col num: %d\n\
     N_VAL: %d\n\
     Total Slots Len: %d\n\
-    Max Time s: %d\n", 
-    row_num, col_num, n_val, total_slots_len, latency_bound_s);
+    Max Time s: %d\n\ 
+    Min Light Time: %d\n",
+    row_num, col_num, n_val, total_slots_len, latency_bound_s, min_light_t);
     
     printf("\nBeacon interval period: ");
     print_float(BEACON_INTERVAL_PERIOD_SCALED);
