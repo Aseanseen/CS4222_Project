@@ -35,10 +35,10 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 #define NUM_SEND 2
 
 #define LATENCY_BOUND_S UNIT_CYCLE_TIME_S
-#define BEACON_INTERVAL_FREQ_SCALED  (float)(TOTAL_SLOTS_LEN  * 1000 / LATENCY_BOUND_S)
-#define BEACK_INTERVAL_PERIOD (float)(1000/BEACON_INTERVAL_FREQ_SCALED)
-#define WAKE_TIME RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
-#define SLEEP_SLOT RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
+#define BEACON_INTERVAL_FREQ_SCALED  (float)(TOTAL_SLOTS_LEN / LATENCY_BOUND_S)
+#define BEACK_INTERVAL_PERIOD (float)(1/BEACON_INTERVAL_FREQ_SCALED)
+#define WAKE_TIME RTIMER_SECOND / BEACON_INTERVAL_FREQ_SCALED
+#define SLEEP_SLOT RTIMER_SECOND / BEACON_INTERVAL_FREQ_SCALED
 
 #define ENVIRON_FACTOR_IN 22.0 // Free space = 2 (after multiply by 10)
 #define MEASURED_POWER_IN -78
@@ -109,7 +109,7 @@ is_outdoor(){
     #if TMOTE_SKY
     value = COOJA_LIGHT_VAL;
     #endif
-    printf("\nLight value: %i\n", value);
+    printf("OPT: Light=%d.%02d lux\n", value / 100, value % 100);
     if(value != CC26XX_SENSOR_READING_ERROR) {
         // Check if LUX over threshold
         if ((value / 100) >= LUX_THRESHOLD) rtr_val = 1;
@@ -372,7 +372,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             // Set Radio transmission power
             NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
             int tx_val;
-            NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, tx_val);
+            NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, &tx_val);
             printf("tx_val: %i\n", tx_val);
             for (i = 0; i < NUM_SEND; i++)
             { // #define NUM_SEND 2 (in defs_and_types.h)
@@ -491,11 +491,11 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     set_active_slots(send_arr, row_num, col_num);
 
     // Prints parameter data.
-    long time = 1000 * 1000 / BEACON_INTERVAL_FREQ_SCALED;
-    int s = time/1000;
-    int ms1 = (time % 1000)*10/1000;
-    int ms2 = ((time % 1000)*100/1000)%10;
-    int ms3 = ((time % 1000)*1000/1000)%10;
+    long time = 1 / BEACON_INTERVAL_FREQ_SCALED;
+    int s = time;
+    int ms1 = (time*10)%10;
+    int ms2 = (time*100)%10;
+    int ms3 = (time*1000)%10;
     int wake_time = WAKE_TIME;
     int sleep_slot = SLEEP_SLOT;
     int n_val = N_VAL;
@@ -505,8 +505,8 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     printf("\
     Row num: %d\n\
     Col num: %d\n\
-    Wake time: %ld\n\
-    Sleep slot: %ld\n\
+    Wake time: %d\n\
+    Sleep slot: %d\n\
     Beacon Interval Period: %d.%d%d%ds\n\
     N_VAL: %d\n\
     Total Slots Len: %d\n\
