@@ -370,7 +370,11 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             NETSTACK_RADIO.on();
 
             // Set Radio transmission power
+            # if TMOTE_SKY
             NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
+            # else
+            NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, 0);
+            #endif
             int tx_val;
             NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, &tx_val);
             printf("tx_val: %i\n", tx_val);
