@@ -34,12 +34,6 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 #define SEND_ARR_LEN                        2 * N_VAL - 1
 #define NUM_SEND                            2
 
-static int LATENCY_BOUND_S;
-static float BEACON_INTERVAL_FREQ_SCALED;
-static float BEACON_INTERVAL_PERIOD_SCALED;
-static float WAKE_TIME;
-static float SLEEP_SLOT;
-
 #define ENVIRON_FACTOR_IN                   22.0 // Free space = 2 (after multiply by 10)
 #define MEASURED_POWER_IN                   -78
 #define ENVIRON_FACTOR_OUT                  22.0 // Free space = 2 (after multiply by 10)
@@ -50,6 +44,12 @@ static float SLEEP_SLOT;
 
 #define LUX_THRESHOLD                       1200 // LUX threshold to determine outdoor/indoor 
 #define MIN_WARM_UP_TIME_S                  (float)0.2 // Min number of seconds needed for light sensor to warm up
+/*---------------------------------------------------------------------------*/
+static int LATENCY_BOUND_S;
+static float BEACON_INTERVAL_FREQ_SCALED;
+static float BEACON_INTERVAL_PERIOD_SCALED;
+static float WAKE_TIME;
+static float SLEEP_SLOT;
 /*---------------------------------------------------------------------------*/
 static struct rtimer rt;
 static struct pt pt;
@@ -507,7 +507,7 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     Col num: %d\n\
     N_VAL: %d\n\
     Total Slots Len: %d\n\
-    Max Time s: %d\n\ 
+    Max Time s: %d\n\
     Min Light Time: %d\n",
     row_num, col_num, n_val, total_slots_len, latency_bound_s, min_light_t);
     
