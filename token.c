@@ -63,8 +63,6 @@ static int send_index = 0;
 static int curr_pos = 0;
 static int environment = 0; // 0 - indoor, 1 - outdoor
 /*---------------------------------------------------------------------------*/
-static int detect_timestamp_s;
-static int absent_timestamp_s;
 unsigned long cycle_start_timestamp_s;
 /*---------------------------------------------------------------------------*/
 static void count_consec(int, int);
@@ -467,9 +465,9 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
 
     random_init(54222);
 
-	// #ifdef TMOTE_SKY
-    // powertrace_start(CLOCK_SECOND * 5);
-	// #endif
+	#ifdef TMOTE_SKY
+    powertrace_start(CLOCK_SECOND * 5);
+	#endif
 
     broadcast_open(&broadcast, 129, &broadcast_call);
 
