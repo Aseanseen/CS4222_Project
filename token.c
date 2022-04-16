@@ -365,7 +365,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
 
             // Set Radio transmission power
             NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
-
+            int tx_val;
+            NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, tx_val);
+            printf("tx_val: %i\n", tx_val);
             for (i = 0; i < NUM_SEND; i++)
             { // #define NUM_SEND 2 (in defs_and_types.h)
                 packetbuf_copyfrom(&data_packet, (int)sizeof(data_packet_struct));
