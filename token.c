@@ -200,7 +200,7 @@ count_consec(int curr_timestamp_s, int start_timestamp_s)
             tokenId = _dummyToken->key;
             is_detect = is_detect_cycle(_dummyToken);
             // printf("NODE %d ", _dummyToken->key);
-            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
+            // printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
@@ -409,7 +409,7 @@ sender_scheduler(struct rtimer *t, void *ptr)
             { 
                 packetbuf_copyfrom(&data_packet, (int)sizeof(data_packet_struct));
 				broadcast_send(&broadcast);
-                printf("Time1: %ld\n", clock_time()/CLOCK_SECOND);
+                // printf("Time1: %ld\n", clock_time()/CLOCK_SECOND);
                 if (i != (NUM_SEND - 1))
                 {
                     rtimer_set(t, RTIMER_TIME(t) + WAKE_TIME, 1, (rtimer_callback_t)sender_scheduler, ptr);
@@ -444,7 +444,7 @@ sender_scheduler(struct rtimer *t, void *ptr)
             for (i = 0; i < NumSleep; i++)
             {
                 // Warm up light sensor 1 slot before wake up
-                printf("Time2: %ld\n", clock_time()/CLOCK_SECOND);
+                // printf("Time2: %ld\n", clock_time()/CLOCK_SECOND);
 
                 rtimer_set(t, RTIMER_TIME(t) + SLEEP_SLOT, 1, (rtimer_callback_t)sender_scheduler, ptr);
                 PT_YIELD(&pt);
