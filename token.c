@@ -29,12 +29,12 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 #define UNIT_CYCLE_TIME_S                   1
 
 /* Quantity is varied to choose the minimal power consumption. */
-#define N_VAL                               3
+#define N_VAL                               8
 #define TOTAL_SLOTS_LEN                     N_VAL * N_VAL
 #define SEND_ARR_LEN                        2 * N_VAL - 1
 #define NUM_SEND                            2
 
-static int LATENCY_BOUND_S = UNIT_CYCLE_TIME_S;
+static int LATENCY_BOUND_S;
 static float BEACON_INTERVAL_FREQ_SCALED;
 static float BEACON_INTERVAL_PERIOD_SCALED;
 static float WAKE_TIME;
@@ -199,7 +199,7 @@ count_consec(int curr_timestamp_s, int start_timestamp_s)
             tokenId = _dummyToken->key;
             is_detect = is_detect_cycle(_dummyToken);
             // printf("NODE %d ", _dummyToken->key);
-            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
+            // printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
@@ -488,12 +488,13 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     int col_num = random_rand() % N_VAL;
 
     set_active_slots(send_arr, row_num, col_num);
-    min_light_t = (int)(MIN_WARM_UP_TIME_S / ((float)BEACON_INTERVAL_PERIOD_SCALED / 1000)) + 1;  // Min number of slots to warm up light sensor.
-    BEACON_INTERVAL_FREQ_SCALED = LATENCY_BOUND_S / (TOTAL_SLOTS_LEN);
-    BEACON_INTERVAL_PERIOD_SCALED = 1 / BEACON_INTERVAL_FREQ_SCALED;
+    
+    LATENCY_BOUND_S = UNIT_CYCLE_TIME_S;
+    BEACON_INTERVAL_PERIOD_SCALED = (float)LATENCY_BOUND_S / (TOTAL_SLOTS_LEN);
+    BEACON_INTERVAL_FREQ_SCALED = 1 / BEACON_INTERVAL_FREQ_SCALED;
     WAKE_TIME = RTIMER_SECOND * BEACON_INTERVAL_PERIOD_SCALED;
     SLEEP_SLOT = RTIMER_SECOND * BEACON_INTERVAL_PERIOD_SCALED;
-    
+    min_light_t = (int)(MIN_WARM_UP_TIME_S / ((float)BEACON_INTERVAL_PERIOD_SCALED / 1000)) + 1;  // Min number of slots to warm up light sensor.
 
     // Prints parameter data.
     
