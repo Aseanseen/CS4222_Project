@@ -26,19 +26,19 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 /*---------------------------------------------------------------------------*/
 #define ABSENT_TO_DETECT_S                  15
 #define DETECT_TO_ABSENT_S                  30
-#define UNIT_CYCLE_TIME_S                   5
+#define UNIT_CYCLE_TIME_S                   1
 
 /* Quantity is varied to choose the minimal power consumption. */
-#define N_VAL                               8
+#define N_VAL                               3
 #define TOTAL_SLOTS_LEN                     N_VAL * N_VAL
 #define SEND_ARR_LEN                        2 * N_VAL - 1
 #define NUM_SEND                            2
 
-#define LATENCY_BOUND_S                     UNIT_CYCLE_TIME_S
-#define BEACON_INTERVAL_FREQ_SCALED         (TOTAL_SLOTS_LEN  * 1000 / LATENCY_BOUND_S)
-#define BEACON_INTERVAL_PERIOD_SCALED       (1000 * 1000 / BEACON_INTERVAL_FREQ_SCALED)
-#define WAKE_TIME                           RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
-#define SLEEP_SLOT                          RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
+static int LATENCY_BOUND_S = UNIT_CYCLE_TIME_S;
+static float BEACON_INTERVAL_FREQ_SCALED;
+static float BEACON_INTERVAL_PERIOD_SCALED;
+static float WAKE_TIME;
+static float SLEEP_SLOT;
 
 #define ENVIRON_FACTOR_IN                   22.0 // Free space = 2 (after multiply by 10)
 #define MEASURED_POWER_IN                   -78
@@ -78,7 +78,7 @@ struct TokenDataList tokenDataList= {.max_size = ARR_MAX_LEN, .num_elem = 0};
 /*---------------------------------------------------------------------------*/
 MEMB(tmp, struct TokenData, ARR_MAX_LEN);
 /*---------------------------------------------------------------------------*/
-int min_light_t = (int)(MIN_WARM_UP_TIME_S / ((float)BEACON_INTERVAL_PERIOD_SCALED / 1000)) + 1;  // Min number of slots to warm up light sensor.
+int min_light_t; // Min number of slots to warm up light sensor.
 int light_flag = 1; // Signal when light sensor is warmed up.
 
 /*
@@ -488,32 +488,36 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     int col_num = random_rand() % N_VAL;
 
     set_active_slots(send_arr, row_num, col_num);
-
-
+    min_light_t = (int)(MIN_WARM_UP_TIME_S / ((float)BEACON_INTERVAL_PERIOD_SCALED / 1000)) + 1;  // Min number of slots to warm up light sensor.
+    BEACON_INTERVAL_FREQ_SCALED = LATENCY_BOUND_S / (TOTAL_SLOTS_LEN);
+    BEACON_INTERVAL_PERIOD_SCALED = 1 / BEACON_INTERVAL_FREQ_SCALED;
+    WAKE_TIME = RTIMER_SECOND * BEACON_INTERVAL_PERIOD_SCALED;
+    SLEEP_SLOT = RTIMER_SECOND * BEACON_INTERVAL_PERIOD_SCALED;
+    
 
     // Prints parameter data.
-    /*
-    int time = BEACON_INTERVAL_PERIOD_SCALED;
-    int s = (int)time / 1000;
-    int ms1 = (int)(time*10 / 1000) %10;
-    int ms2 = (int)(time*100 / 1000) %10;
-    int ms3 = (int)(time*1000 / 1000) %10;
-    int wake_time = WAKE_TIME;
-    int sleep_slot = SLEEP_SLOT;
+    
     int n_val = N_VAL;
     int total_slots_len = TOTAL_SLOTS_LEN;
     int latency_bound_s = LATENCY_BOUND_S;
+    
     printf("\
     Row num: %d\n\
     Col num: %d\n\
-    Wake time: %d\n\
-    Sleep slot: %d\n\
-    Beacon Interval Period: %d.%d%d%ds\n\
     N_VAL: %d\n\
     Total Slots Len: %d\n\
     Max Time s: %d\n", 
-    row_num, col_num, wake_time, sleep_slot, s, ms1, ms2, ms3, n_val, total_slots_len, latency_bound_s);
-    */
+    row_num, col_num, n_val, total_slots_len, latency_bound_s);
+    
+    printf("\nBeacon interval period: ");
+    print_float(BEACON_INTERVAL_PERIOD_SCALED);
+
+    printf("\nWake Time: ");
+    print_float(WAKE_TIME);
+
+    printf("\nSleep Slot: ");
+    print_float(SLEEP_SLOT);
+    
 
     // Initialise memory for the TokenData Hashtable.
     memb_init(&tmp);
