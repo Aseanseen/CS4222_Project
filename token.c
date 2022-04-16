@@ -177,7 +177,7 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     
     // Check light setting
     environment = is_outdoor();
-    printf("\nIS OUTDOOR: %i\n", environment);
+    //printf("\nIS OUTDOOR: %i\n", environment);
     
     int i;
     int is_detect;
@@ -352,7 +352,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
     static int NumSleep = 0;
     PT_BEGIN(&pt);
     min_light_t = MIN_WARM_UP_TIME_S / BEACK_INTERVAL_PERIOD + 1; 
-    printf("min light t: %d\n", min_light_t);
+    //printf("min light t: %d\n", min_light_t);
     light_flag = 1;
     while (1)
     {
@@ -371,13 +371,13 @@ char sender_scheduler(struct rtimer *t, void *ptr)
 
             // Set Radio transmission power
             # if TMOTE_SKY
-            NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
-            # else
             NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, 0);
+            # else
+            NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
             #endif
             int tx_val;
             NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, &tx_val);
-            printf("tx_val: %i\n", tx_val);
+            //printf("tx_val: %i\n", tx_val);
             for (i = 0; i < NUM_SEND; i++)
             { // #define NUM_SEND 2 (in defs_and_types.h)
                 packetbuf_copyfrom(&data_packet, (int)sizeof(data_packet_struct));
