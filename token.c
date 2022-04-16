@@ -11,21 +11,17 @@
 #include "random.h"
 #include "math.h"
 /*---------------------------------------------------------------------------*/
-#define CC26XX                              0
-#define COOJA                               1
 #define COOJA_LIGHT_VAL                     12000
 /*---------------------------------------------------------------------------*/
-#ifdef BOARD_SENSORTAG
-#include "board-peripherals.h"
-const struct sensors_sensor *sensor = &opt_3001_sensor;
-#define BOARD                               CC26XX
-
-#elif TMOTE_SKY
+#if TMOTE_SKY
 #include "powertrace.h"
 #include "dev/light-sensor.h"
 #define CC26XX_SENSOR_READING_ERROR        0x80000000
-#define BOARD                               COOJA
 const struct sensors_sensor *sensor = &light_sensor;
+#else
+#include "board-peripherals.h"
+const struct sensors_sensor *sensor = &opt_3001_sensor;
+
 #endif
 /*---------------------------------------------------------------------------*/
 #define ABSENT_TO_DETECT_S                  15
@@ -103,16 +99,12 @@ int
 is_outdoor(){
     int value;
     int rtr_val = 0;
-    
-    if (BOARD == COOJA)
-    {
-        value = COOJA_LIGHT_VAL;
-    }
-    else
-    {
-        value = (*sensor).value(0);        
-    }
 
+    value = (*sensor).value(0);
+    // Overwrite with pseudo value if COOJA
+    #if TMOTE_SKY
+    value = COOJA_LIGHT_VAL;
+    #endif
     printf("\nLight value: %i\n", value);
     if(value != CC26XX_SENSOR_READING_ERROR) {
         // Check if LUX over threshold
@@ -193,14 +185,15 @@ static void count_consec(int curr_timestamp_s, int start_timestamp_s)
     for(i = 0; i<ARR_MAX_LEN; i++)
     {
         _dummyToken = tokenDataList.tk[i];   
+        // map_view(&tokenDataList);
         if(_dummyToken->key != -1)
         {
             state_flag = _dummyToken->state_flag;
             consec = _dummyToken->consec;
             tokenId = _dummyToken->key;
             is_detect = is_detect_cycle(_dummyToken);
-            //printf("NODE %d ", _dummyToken->key);
-            //printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
+            // printf("NODE %d ", _dummyToken->key);
+            // printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
