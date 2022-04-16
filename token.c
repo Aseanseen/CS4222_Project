@@ -49,7 +49,7 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 #define DISTANCE_THRESHOLD 3
 
 #define LUX_THRESHOLD 1200 // LUX threshold to determine outdoor/indoor 
-#define MIN_WARM_UP_TIME_S 0.125 // Min number of seconds needed for light sensor to warm up
+#define MIN_WARM_UP_TIME_S (float)0.2 // Min number of seconds needed for light sensor to warm up
 /*---------------------------------------------------------------------------*/
 static struct rtimer rt;
 static struct pt pt;
