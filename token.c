@@ -29,15 +29,16 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 #define UNIT_CYCLE_TIME_S                   1
 
 /* Quantity is varied to choose the minimal power consumption. */
-#define N_VAL 3
+#define N_VAL 8
 #define TOTAL_SLOTS_LEN N_VAL * N_VAL
 #define SEND_ARR_LEN 2 * N_VAL - 1
 #define NUM_SEND 2
 
 #define LATENCY_BOUND_S UNIT_CYCLE_TIME_S
-#define BEACON_INTERVAL_FREQ_SCALED  (float)(TOTAL_SLOTS_LEN  * 1000 / LATENCY_BOUND_S)
-#define WAKE_TIME RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
-#define SLEEP_SLOT RTIMER_SECOND * 1000 / BEACON_INTERVAL_FREQ_SCALED
+#define BEACON_INTERVAL_FREQ_SCALED  (float)(TOTAL_SLOTS_LEN / LATENCY_BOUND_S)
+#define BEACK_INTERVAL_PERIOD (float)(1/BEACON_INTERVAL_FREQ_SCALED)
+#define WAKE_TIME RTIMER_SECOND / BEACON_INTERVAL_FREQ_SCALED
+#define SLEEP_SLOT RTIMER_SECOND / BEACON_INTERVAL_FREQ_SCALED
 
 #define ENVIRON_FACTOR_IN 22.0 // Free space = 2 (after multiply by 10)
 #define MEASURED_POWER_IN -78
@@ -48,6 +49,7 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 #define DISTANCE_THRESHOLD 3
 
 #define LUX_THRESHOLD 1200 // LUX threshold to determine outdoor/indoor 
+#define MIN_WARM_UP_TIME_S (float)0.2 // Min number of seconds needed for light sensor to warm up
 /*---------------------------------------------------------------------------*/
 static struct rtimer rt;
 static struct pt pt;
@@ -78,6 +80,8 @@ struct TokenDataList tokenDataList= {.max_size = ARR_MAX_LEN, .num_elem = 0};
 /*---------------------------------------------------------------------------*/
 MEMB(tmp, struct TokenData, ARR_MAX_LEN);
 /*---------------------------------------------------------------------------*/
+int min_light_t; // Min number of slots to warm up light sensor.
+int light_flag; // Signal when light sensor is warmed up.
 
 /*
     Prints float variables
@@ -105,7 +109,7 @@ is_outdoor(){
     #if TMOTE_SKY
     value = COOJA_LIGHT_VAL;
     #endif
-    printf("\nLight value: %i\n", value);
+    printf("OPT: Light=%d.%02d lux\n", value / 100, value % 100);
     if(value != CC26XX_SENSOR_READING_ERROR) {
         // Check if LUX over threshold
         if ((value / 100) >= LUX_THRESHOLD) rtr_val = 1;
@@ -347,7 +351,9 @@ char sender_scheduler(struct rtimer *t, void *ptr)
     static uint16_t i = 0;
     static int NumSleep = 0;
     PT_BEGIN(&pt);
-
+    min_light_t = MIN_WARM_UP_TIME_S / BEACK_INTERVAL_PERIOD + 1; 
+    printf("min light t: %d\n", min_light_t);
+    light_flag = 1;
     while (1)
     {
         /* 
@@ -366,7 +372,7 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             // Set Radio transmission power
             NETSTACK_RADIO.set_value(RADIO_PARAM_TXPOWER, TX_POWER);
             int tx_val;
-            NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, tx_val);
+            NETSTACK_RADIO.get_value(RADIO_PARAM_TXPOWER, &tx_val);
             printf("tx_val: %i\n", tx_val);
             for (i = 0; i < NUM_SEND; i++)
             { // #define NUM_SEND 2 (in defs_and_types.h)
@@ -379,14 +385,24 @@ char sender_scheduler(struct rtimer *t, void *ptr)
                     PT_YIELD(&pt);
                 }
             }
+
             // update the curr pos and the send index
             curr_pos = (curr_pos == TOTAL_SLOTS_LEN - 1) ? 0 : curr_pos + 1;
+
+            // printf("%d --- %d : %s\n", min_light_t, TOTAL_SLOTS_LEN - curr_pos, light_flag ? "yes1" : "no1");
+            if (((TOTAL_SLOTS_LEN - curr_pos) < min_light_t) && light_flag) {
+                SENSORS_ACTIVATE(*sensor);
+                // printf("active - 1!\n");
+                light_flag = 0;
+            }
+
             send_index = (send_index == SEND_ARR_LEN - 1) ? 0 : send_index + 1;
             if (curr_pos == 0)
             {
                 process_cycle();
+                light_flag = 1;
             }
-            SENSORS_DEACTIVATE(*sensor);
+            
             // Turn off light sensor
         }
         /* Sleep mode */
@@ -413,17 +429,25 @@ char sender_scheduler(struct rtimer *t, void *ptr)
             for (i = 0; i < NumSleep; i++)
             {
                 // Warm up light sensor 1 slot before wake up
-                if (i == NumSleep - 1) {
-                    SENSORS_ACTIVATE(*sensor);
-                }
+                // printf("Num Sleep: %d\n", NumSleep);
 
                 rtimer_set(t, RTIMER_TIME(t) + SLEEP_SLOT, 1, (rtimer_callback_t)sender_scheduler, ptr);
                 PT_YIELD(&pt);
+
                 // Increment curr pos for every sleep slot
                 curr_pos = (curr_pos == TOTAL_SLOTS_LEN - 1) ? 0 : curr_pos + 1;
+
+                // printf("%d --- %d : %s\n", min_light_t, TOTAL_SLOTS_LEN - curr_pos, light_flag ? "yes2" : "no2");
+                if (((TOTAL_SLOTS_LEN - curr_pos) < min_light_t) && light_flag) {
+                    SENSORS_ACTIVATE(*sensor);
+                    // printf("active - 2!\n");
+                    light_flag = 0;
+                }
+
                 if (curr_pos == 0)
 	            {
                     process_cycle();
+                    light_flag = 1;
 	            }
             }
         }
@@ -467,22 +491,28 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     set_active_slots(send_arr, row_num, col_num);
 
     // Prints parameter data.
-    long time = 1000 * 1000 / BEACON_INTERVAL_FREQ_SCALED;
-    int s = time/1000;
-    int ms1 = (time % 1000)*10/1000;
-    int ms2 = ((time % 1000)*100/1000)%10;
-    int ms3 = ((time % 1000)*1000/1000)%10;
+    long time = 1 / BEACON_INTERVAL_FREQ_SCALED;
+    int s = time;
+    int ms1 = (time*10)%10;
+    int ms2 = (time*100)%10;
+    int ms3 = (time*1000)%10;
+    int wake_time = WAKE_TIME;
+    int sleep_slot = SLEEP_SLOT;
+    int n_val = N_VAL;
+    int total_slots_len = TOTAL_SLOTS_LEN;
+    int latency_bound_s = LATENCY_BOUND_S;
 
     printf("\
-        Row num: %d\n\
-        Col num: %d\n\
-        Wake time: %ld\n\
-        Sleep slot: %ld\n\
-        Beacon Interval Period: %d.%d%d%ds\n\
-        N_VAL: %d\n\
-        Total Slots Len: %d\n\
-        Max Time s: %d\n", 
-        row_num, col_num, WAKE_TIME, SLEEP_SLOT, s, ms1, ms2, ms3, N_VAL, TOTAL_SLOTS_LEN, LATENCY_BOUND_S);
+    Row num: %d\n\
+    Col num: %d\n\
+    Wake time: %d\n\
+    Sleep slot: %d\n\
+    Beacon Interval Period: %d.%d%d%ds\n\
+    N_VAL: %d\n\
+    Total Slots Len: %d\n\
+    Max Time s: %d\n", 
+    row_num, col_num, wake_time, sleep_slot, s, ms1, ms2, ms3, n_val, total_slots_len, latency_bound_s);
+
 
     memb_init(&tmp);
     map_init(tmp, &tokenDataList);
