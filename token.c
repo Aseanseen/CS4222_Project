@@ -26,7 +26,7 @@ const struct sensors_sensor *sensor = &opt_3001_sensor;
 /*---------------------------------------------------------------------------*/
 #define ABSENT_TO_DETECT_S                  15
 #define DETECT_TO_ABSENT_S                  30
-#define UNIT_CYCLE_TIME_S                   1
+#define UNIT_CYCLE_TIME_S                   5
 
 /* Quantity is varied to choose the minimal power consumption. */
 #define N_VAL                               8
@@ -102,12 +102,11 @@ is_outdoor(){
     int value;
     int rtr_val = 0;
 
-    
+    value = (*sensor).value(0);
     // Overwrite with pseudo value if COOJA
     #if TMOTE_SKY
     value = COOJA_LIGHT_VAL;
     #else 
-    value = (*sensor).value(0);
     if(value != CC26XX_SENSOR_READING_ERROR) {
         // Check if LUX over threshold
         if ((value / 100) >= LUX_THRESHOLD) rtr_val = 1;
@@ -200,7 +199,7 @@ count_consec(int curr_timestamp_s, int start_timestamp_s)
             tokenId = _dummyToken->key;
             is_detect = is_detect_cycle(_dummyToken);
             // printf("NODE %d ", _dummyToken->key);
-            // printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
+            printf("CURR TIME %i START TIME %i COUNTING %i STATE %i DETECT %i\n", curr_timestamp_s, !state_flag ? _dummyToken->detect_to_absent_ts : _dummyToken->absent_to_detect_ts, consec, state_flag, is_detect);
 
         	/* Detect mode */
         	if(state_flag && !is_detect)
