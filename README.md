@@ -21,9 +21,3 @@
 - Upon reaching the consecutive number of cycles, change state. Absent: if there are 15 seconds worth of cycles where the other token has been detected, change to detect mode. Detect: if there are 30 seconds worth of cycles where the other token is absent, change to absent mode.
 - Upon changing mode, prints the **Timestamp (in seconds) DETECT/ABSENT nodeID** of the first occurence of the consecutives.
 
-# To do
-- Change the value of RSSI_THRESHOLD_3M in constants.h to the appropriate value
-- Combine the code to determine proximity based on RSSI
-- Find the best setting for power saving
-- Measure energy consumption using Cooja
-- Maybe change the `DETECT_TO_ABSENT`, `ABSENT_TO_DETECT` to change based on the actual time of 30s and 15s, rather than the current implementation which assumes each cycle lasts for 1s.
