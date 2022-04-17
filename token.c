@@ -497,7 +497,7 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
     min_light_t = (int)(MIN_WARM_UP_TIME_S / ((float)BEACON_INTERVAL_PERIOD_SCALED)) + 1;  // Min number of slots to warm up light sensor.
 
     // Prints parameter data.
-    
+    /*
     int n_val = N_VAL;
     int total_slots_len = TOTAL_SLOTS_LEN;
     int latency_bound_s = LATENCY_BOUND_S;
@@ -519,7 +519,7 @@ PROCESS_THREAD(cc2650_nbr_discovery_process, ev, data)
 
     printf("\nSleep Slot: ");
     print_float(SLEEP_SLOT);
-    
+    */
 
     // Initialise memory for the TokenData Hashtable.
     memb_init(&tmp);
