@@ -1,2 +1,2 @@
 #!/bin/bash
-make TARGET=sky token.upload
+make TARGET=sky token.upload 
